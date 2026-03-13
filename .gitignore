@@ -1,0 +1,15 @@
+#Makefile
+Makefile
+
+# env
+.vscode
+.env
+
+# data
+*.csv
+*.db
+
+# cache e artefatos
+mlartifacts
+mlruns
+__pycache__
