@@ -14,10 +14,11 @@ def import_query(path):
 query = import_query("frequencia_valor.sql")
 
 # %%
-df = pd.read_sql(query, engine)
+df = pd.read_sql(query.format(date='2025-09-01'), engine)
 
 df = df[df["qtdePontosPos"] < 4000]
 
+df
 # %%
 plt.plot(df["qtdeFrequencia"], df["qtdePontosPos"], 'o')
 plt.grid(True)
