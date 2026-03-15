@@ -72,27 +72,26 @@ Uma dessas ações é a predição da probabilidade de clientes se tornarem fié
 
 ## Entendimento dos Dados
 
-Os dados foram coletados e disponibilizados na forma de bancos de dados pelo Teodoro Calvo na plataforma Kaggle, sendo eles a base para o desenvolvimento desse projeto.
+Os dados foram disponibilizados em formato de banco de dados relacional pelo Teodoro Calvo e analisados utilizando SQL com SQLite.
 
-Para realizar as consultas, foi utilizada a linguagem SQL, com o SQLite como sistema para gerenciar banco de dados (SGDB).
+O projeto utiliza dois bancos de dados principais:
+
+- Sistema de Fidelidade
+- Plataforma Educacional
 
 ### Fontes de Dados
 
-O primeiro banco de dados conta com 4 tabelas sobre clientes, produtos, transações, sendo referente ao sistema de pontos do canal Teo Me Why da Twitch.
-
+O primeiro banco de dados e mais utilizado é composto por 4 tabelas relacionadas a clientes, produtos, transações do sistema de pontos do canal Teo Me Why na Twitch. 
 
 - **Sistema de Pontos**: [https://www.kaggle.com/datasets/teocalvo/teomewhy-loyalty-system](https://www.kaggle.com/datasets/teocalvo/teomewhy-loyalty-system)
 
 
-O segundo banco de dados conta com 8 tabelas relacionadas à plataforma de cursos. Vale ressaltar que somente 10% da base tem informações cadastradas nessa plataforma.
+O segundo banco de dados é formado por 8 tabelas relacionadas à plataforma de cursos.
 
 - **Plataforma de Cursos**: [https://www.kaggle.com/datasets/teocalvo/teomewhy-education-platform](https://www.kaggle.com/datasets/teocalvo/teomewhy-education-platform)
 
-### Esquema dos Bancos de Dados
+Observação: Vale ressaltar que somente 10% da base tem informações cadastradas no segundo banco de dados, assim, sendo menos consultado que o primeiro.
 
-![schema_loyalty_sytem](img\schema_loyalty_system.png)
-
-![schema_loyalty_sytem](img\schema_education_platform.png)
 ### Análise do Engajamento dos Usuários
 
 A primeira análise realizada tinha o objetivo de identificar se estava acontecendo perda ou ganho de engajamento dos usuários nas transmissões ao vivo do Teo Me Why.
@@ -320,3 +319,78 @@ aaaa
 - Criação de App para Inferência em Tempo Real;
 - Integração com Ecossistema TMW;
 
+## Informações Extras
+
+### Banco de Dados do Sistema de Fidelidade
+
+O banco de dados do sistema de fidelidade possui as seguintes tabelas:
+
+* 1ª Tabela: transacoes;
+
+Descrição: Registra as transações realizadas pelos clientes.
+
+| Coluna             | Tipo      | Descrição |
+|-------------------|-----------|-----------|
+| IdTransacao       | text      | Identificador único da transação (PK) |
+| IdCliente         | text      | Cliente que realizou a transação (FK) |
+| DtCriacao         | datetime  | Data da transação |
+| QtdePontos        | bigint    | Pontos envolvidos na transação |
+| DescSistemaOrigem | text      | Origem da transação |
+
+* 2ª Tabela: clientes;
+
+Descrição: Armazena informações dos clientes do sistema.
+
+| Coluna          | Tipo    | Descrição |
+|-----------------|---------|-----------|
+| idCliente       | text    | Identificador único do cliente (PK) |
+| flEmail         | bigint  | Flag de cadastro de email |
+| flTwitch        | bigint  | Flag de cadastro de Twitch |
+| flYouTube       | bigint  | Flag de cadastro de YouTube |
+| flBlueSky       | bigint  | Flag de cadastro de BlueSky |
+| flInstagram     | bigint  | Flag de cadastro de Instagram |
+| qtdePontos      | bigint  | Pontos acumulados |
+| DtCriacao       | datetime| Data de criação do registro |
+| DtAtualizacao   | datetime| Data da última atualização |
+
+* 3ª Tabela: produtos;
+
+Descrição: Armazena informações sobre os produtos disponíveis.
+
+| Coluna                  | Tipo  | Descrição |
+|-------------------------|-------|-----------|
+| IdProduto               | text  | Identificador único do produto (PK) |
+| DescNomeProduto         | text  | Nome do produto |
+| DescDescricaoProduto    | text  | Descrição detalhada do produto |
+| DescCategoriaProduto    | text  | Categoria do produto |
+
+
+* 4ª Tabela: transacao_produto.
+
+Descrição: Relaciona produtos às transações.
+
+| Coluna             | Tipo   | Descrição |
+|-------------------|--------|-----------|
+| idTransacaoProduto| text   | Identificador único (PK) |
+| IdTransacao       | text   | Transação relacionada (FK) |
+| IdProduto         | text   | Produto relacionado (FK) |
+| QtdeProduto       | bigint | Quantidade do produto na transação |
+| vlProduto         | bigint | Valor do produto na transação |
+
+O esquema do banco de dados do sistema de fidelidade é o seguinte:
+
+![schema_loyalty_sytem](img\schema_loyalty_system.png)
+
+### Banco de Dados da Plataforma de Educação
+
+O banco de Dados da plataforma de educação é composto pelas seguintes tabelas:
+
+* 1ª Tabela: curso_episodio_completos
+
+|        Colunas        |  Tipo  |  Descrição  |
+|-----------------------|--------|-------------|
+|idCursoEpisodioCompleto| bigint |aaa |
+
+Já o esquema do banco de dados da plataforma de educação é o seguinte:
+
+![schema_education_platform](img\schema_education_platform.png)
