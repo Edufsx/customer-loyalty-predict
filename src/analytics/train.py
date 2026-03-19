@@ -1,6 +1,13 @@
 # %%
 import pandas as pd
-import sqlalchemy 
+import sqlalchemy
+import mlflow
+import matplotlib.pyplot as plt
+from feature_engine import (
+    selection, 
+    imputation, 
+    encoding
+)
 from sklearn import (
     model_selection,
     tree, 
@@ -8,114 +15,132 @@ from sklearn import (
     ensemble, 
     pipeline
 )
-from feature_engine import (
-    selection, 
-    imputation, 
-    encoding
-)
-import mlflow
-import matplotlib.pyplot as plt
 
+# Configuração MLflow
 mlflow.set_tracking_uri("http://localhost:5000")
 mlflow.set_experiment(experiment_id=1)
 
+# Exibe todas as colunas e linhas (análise)
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
 
+# Conexão com o banco de dados analítico
 con = sqlalchemy.create_engine("sqlite:///../../data/analytics/database.db")
 
 # %%
-# SAMPLE - IMPORT dos dados
+# --- Data Load ---
 
+# Carrega Analytical Base Table (ABT)
 df = pd.read_sql("SELECT * FROM abt_fiel", con)
+df.head()
 
 #%%
-# Sample - oot
+# --- SAMPLE: Out Of Time (OOT) ---
 
+# Separa amostra mais recente para validação temporal (OOT)
 df_oot = df[df["dtRef"] == df["dtRef"].max()].reset_index(drop=True)
 
 #%%
-# Sample Test e Treino
+# --- SAMPLE: Train/Test ---
+
+# Define target e features
 target = "flFiel"
 features = df.columns.to_list()[3:]
 
+# Remove OOT para manter dados para Treino e Teste
 df_train_test = df[df["dtRef"] < df["dtRef"].max()].reset_index(drop=True)
 
+# Matriz de features
 X = df_train_test[features]
+# Vetor do target
 y = df_train_test[target]
 
 #%%
-# Sample - Train and Test SPLIT
+# --- SAMPLE: Train and Test SPLIT ---
 
+# Divide dados em Treino (80%) e Teste (20%)
 X_train, X_test, y_train, y_test =  model_selection.train_test_split(
     X, y,
     test_size= 0.2,
     random_state=42,
+    # Mantém proporção do target
     stratify=y,
 )
 
+# Resumo das bases: quantidade e taxa do Target
 print(f"Base Treino: {y_train.shape[0]} Unid. | Tx. Target: {100 * y_train.mean():.2f}%")
 print(f"Base Teste: {y_test.shape[0]} Unid. | Tx. Target: {100 * y_test.mean():.2f}%")
 
-
-# %%
-# Explore - missing
-# Que número iremos colocar para cada variável
-s_nas = X_train.isna().mean()
-s_nas = s_nas[s_nas > 0]
-s_nas
-
-
 #%%
-# Explore
-# Colocar mais carinho nessa parte - fazer mais analises estatisticas
-# Análise Bivariada
+# --- EXPLORE (EDA): Bivariate Analysis --- 
 
+# Features Categóricas
 cat_features = ['descLifeCycleAtual', 'descLifeCycleD28']
 
+# Features Numéricas
 num_features = list(set(features) - set(cat_features))
 
+# Cópia da Base de Treino com Target
 df_train = X_train.copy()
 df_train[target] = y_train.copy()
 
+# Garante tipo Float para análise
 df_train[num_features] = df_train[num_features].astype(float) 
 
+# Mediana das features numéricas por classe do target
 bivariada = df_train.groupby(target)[num_features].median().T
 
+# Razão entre medianas = fiéis (classe 1) / não fiéis (classe 0)
 bivariada['ratio'] = (bivariada[1] + 0.001) / (bivariada[0] + 0.001)
 
+# Ordenada as features por poder de discriminação (razão entre medianas)
 bivariada = bivariada.sort_values(by='ratio', ascending = False)
-# df_train.groupby('descLifeCycleAtual')[target].mean()
-# df_train.groupby('descLifeCycleD28')[target].mean()
+print(bivariada)
+
+# Taxa média do target por categoria
+print(df_train.groupby('descLifeCycleAtual')[target].mean())
+print(df_train.groupby('descLifeCycleD28')[target].mean())
 
 # %%
-# Modify - DROP
+# --- MODIFY: Type Handling and Features Selection --- 
+
+# Garante tipo numérico adequado para modelagem
 X_train[num_features] = X_train[num_features].astype(float) 
 
+# Identifica Features sem poder discriminativo (ratio = 1) 
 to_remove = bivariada[bivariada['ratio'] == 1].index.tolist()
 
+# Configura remoção de features sem poder discriminativo 
 drop_features = selection.DropFeatures(to_remove)
 
 #%%
-# Análise Descritiva
-""" 
-s_na = X_train_transform.isna().mean()
-s_na[s_na>0] 
-"""
+# --- EXPLORE (EDA): Missing Values ---
+
+# Proporção de valores faltantes em cada feature numérica 
+s_na = X_train[list(set(num_features) - set(to_remove))].isna().mean()
+
+# Filtra apenas as features com valores faltantes
+s_na = s_na[s_na>0] 
+
+s_na
 
 # %%
-# Modify - missing
+# --- MODIFY: Missing Handling ---
 
+# Features que a ausência de valor significa 0
 fill_0 = ['github2025', 'python2025', 'sql2020', 'qtdeCursosCompletos']
 
+# Imputação com 0 
 imput_0 = imputation.ArbitraryNumberImputer(arbitrary_number=0, 
                                             variables=fill_0)
 
+# Imputação de categoria (usuários com apenas 1 transação na base)
 imput_new = imputation.CategoricalImputer(
     fill_value='Nao-Usuario', 
     variables=['descLifeCycleD28']
 )
 
+# Imputação com valor alto (intervalo indefinido / usuário nunca voltou)
 imput_1000 = imputation.ArbitraryNumberImputer(
     arbitrary_number=1000, 
     variables=["avgIntervaloDiasVida", 
@@ -123,43 +148,65 @@ imput_1000 = imputation.ArbitraryNumberImputer(
                "qtdDiasUltimaAtiv"]
 )
 
-# Modify - onehot
+# --- MODIFY: Encoding ---
 
+# One-hot encoding para features categóricas
 onehot = encoding.OneHotEncoder(variables=cat_features)
 
-
 #%%
-# Model
+# --- MODEL ---
 
-# Cross Validation (CV) -> Apenas para encontrar os melhores hiperparametros
-# Depois coloca esses parametros na base inteira
-
-model = tree.DecisionTreeClassifier(random_state=42)
-# model = ensemble.RandomForestClassifier(random_state=42, n_jobs=1)
-
-# model = ensemble.AdaBoostClassifier(random_state=42,)
-# "learning_rate" : [0.001, 0.01, 0.05, 0.1, 0.2, 0.5, 0.9, 0.9 ]
-# "n_estimators" : [100, 200, 400, 500, 1000],
-
-# Grid
-params = {
-    
-    "min_samples_leaf" : [10, 20, 30, 50, 75, 100],
+# Modelos candidatos
+models = {
+    "decision_tree": tree.DecisionTreeClassifier(random_state=42),
+    "random_forest": ensemble.RandomForestClassifier(random_state=42, n_jobs=1),
+    "adaboost": ensemble.AdaBoostClassifier(random_state=42),
 }
 
-grid = model_selection.GridSearchCV(model,
-                                    param_grid=params,
-                                    cv=3,
-                                    scoring="roc_auc",
-                                    refit=True,
-                                    verbose=3,
-                                    n_jobs=-1)
+# Busca de Hiperparâmetros por modelo
+grid_options = {
+    "decision_tree": {
+        "max_depth": [3, 5, 8, 12, None],
+        "min_samples_leaf" : [1, 10, 50],
+        "min_samples_split": [2, 10, 30],
+        },
+    "random_forest": {
+        "n_estimators": [100, 300, 500],
+        "max_depth": [5, 10, 20, None],
+        "min_samples_leaf": [1, 5, 10, 20],
+    },
+    "adaboost": {
+        "n_estimators" : [100, 200, 400, 500, 1000],
+        "learning_rate" : [0.01, 0.1, 0.2, 0.5, 0.9],
+    },
+}
+
+# Seleciona modelo e respectiva busca de Hiperparâmetros 
+model_name = "decision_tree"
+model = models[model_name]
+params = grid_options[model_name]
+
+# Busca de Hiperparâmetros com validação cruzada
+grid = model_selection.GridSearchCV(
+    model,
+    param_grid=params,
+    cv=3,
+    scoring="roc_auc", # Métrica de avaliação dos modelos
+    refit=True, # Treina o modelo  com melhores parâmetros no final
+    verbose=3,
+    n_jobs=-1
+)
+
 # %%
-# Pipeline
+# --- MODEL and ASSES: Training Pipeline and Evaluation ---
+
+# Executa experimento no MLflow
 with mlflow.start_run() as r:
 
+    # Ativa logging automático (parâmetros, métricas e modelo)
     mlflow.sklearn.autolog()
     
+    # Pipeline de transformações + Modelo
     model_pipeline = pipeline.Pipeline(steps=[
         ('Remocao de Features', drop_features),
         ('Imputacao de Zeros', imput_0),
@@ -169,87 +216,66 @@ with mlflow.start_run() as r:
         ('Algoritmo', grid),
     ])
 
-
+    # Treinamento do Pipeline
     model_pipeline.fit(X_train, y_train)
 
-    """ 
-    Hard Coding
-    X_train_transform = drop_features.fit_transform(X_train)
-    X_train_transform = imput_0.fit_transform(X_train_transform)
-    X_train_transform = imput_new.fit_transform(X_train_transform)
-    X_train_transform = imput_1000.fit_transform(X_train_transform)
-    X_train_transform = onehot.fit_transform(X_train_transform)
-    model.fit(X_train_transform, y_train)
-    """
+    # --- ASSESS: Train ---
 
-    # Assess - Métricas
-
-    # Peguei o dado que eu treinei o modelo e quero ver se aprendeu algo
-    # Lista de exercício com gabarito
+    # Predições na base de Treino
     y_pred_train = model_pipeline.predict(X_train)
     y_proba_train = model_pipeline.predict_proba(X_train)
 
+    # Métricas de Treino 
     acc_train = metrics.accuracy_score(y_train, y_pred_train)
     auc_train = metrics.roc_auc_score(y_train, y_proba_train[:,1])
-
-    # OVERFITT NA BASE DE TREINO
-
     print("Acurácia Treino:", acc_train)
     print("AUC Treino:", auc_train)
 
-    # A Métrica de Acurácia não é uma boa métrica
-    """ # TEM QUE SER SÓ TRANSFORM, não usar informações novas, só o que já fiz
-    # em treinamento
-    X_test_transform = drop_features.transform(X_test)
-    X_test_transform = imput_0.transform(X_test_transform)
-    X_test_transform = imput_new.transform(X_test_transform)
-    X_test_transform = imput_1000.transform(X_test_transform)
-    X_test_transform = onehot.transform(X_test_transform)
-    """
-
+    # --- ASSESS: Test ---
+    # Predições na base de Teste
     y_pred_test = model_pipeline.predict(X_test)
     y_proba_test = model_pipeline.predict_proba(X_test)
 
+    # Métricas de Teste
     acc_test = metrics.accuracy_score(y_test, y_pred_test)
     auc_test = metrics.roc_auc_score(y_test, y_proba_test[:,1])
 
     print("Acurácia Teste:", acc_test)
     print("AUC Teste:", auc_test)
 
-    # Chutando tudo igual a zero
-    # BASELINE para a CURVA ROC
-    y_pred_fodase = pd.Series([0]*y_test.shape[0])
+    # --- BASELINE (predição constante) ---
 
-    # Colocar todo mundo com a mesma probabilidade sendo a média da minha base
-    y_proba_fodase = pd.Series([y_train.mean()]*y_test.shape[0])
+    # Predição constante (todos como 0)
+    y_pred_chute = pd.Series([0]*y_test.shape[0])
 
-    acc_fodase = metrics.accuracy_score(y_test, y_pred_fodase)
-    auc_fodase = metrics.roc_auc_score(y_test, y_proba_fodase)
+    # Probabilidade constante (média do target)
+    y_proba_chute = pd.Series([y_train.mean()]*y_test.shape[0])
 
-    print("Acurácia fodase:", acc_fodase)
-    print("AUC fodase:", auc_fodase)
+    # Métricas Baseline
+    acc_chute = metrics.accuracy_score(y_test, y_pred_chute)
+    auc_chute = metrics.roc_auc_score(y_test, y_proba_chute)
 
+    print("Acurácia chute:", acc_chute)
+    print("AUC chute:", auc_chute)
 
-    # Assess Out Of Time
+    # --- ASSESS: Out of Time (OOT)
+    
+    # Base OOT (dados futuros)
     X_oot = df_oot[features]
     y_oot = df_oot[target]
 
-    """ X_oot_transform = drop_features.transform(X_oot)
-    X_oot_transform = imput_0.transform(X_oot_transform)
-    X_oot_transform = imput_new.transform(X_oot_transform)
-    X_oot_transform = imput_1000.transform(X_oot_transform)
-    X_oot_transform = onehot.transform(X_oot_transform)
-    """
-
+    # Predições na base OOT
     y_pred_oot = model_pipeline.predict(X_oot)
     y_proba_oot = model_pipeline.predict_proba(X_oot)
 
+    # Métricas OOT 
     acc_oot = metrics.accuracy_score(y_oot, y_pred_oot)
     auc_oot = metrics.roc_auc_score(y_oot, y_proba_oot[:,1])
 
     print("Acurácia OOT:", acc_oot)
     print("AUC OOT:", auc_oot)
 
+    # Log manual de métricas no MLflow 
     mlflow.log_metrics({
         "acc_train" : acc_train,
         "auc_train" : auc_train,
@@ -259,49 +285,51 @@ with mlflow.start_run() as r:
         "auc_oot" : auc_oot,
     })
     
-    # PLOT CURVA ROC
+    # --- ROC CURVE ---
+
+    # Calcula curvas ROC nas bases de treino, teste e OOT
     roc_train = metrics.roc_curve(y_train, y_proba_train[:,1])
     roc_test = metrics.roc_curve(y_test, y_proba_test[:,1])
     roc_oot = metrics.roc_curve(y_oot, y_proba_oot[:,1])
 
+    # Plot das curvas
     plt.figure(dpi=100)
 
     plt.plot(roc_train[0], roc_train[1])
     plt.plot(roc_test[0], roc_test[1])
     plt.plot(roc_oot[0], roc_oot[1])
-    plt.legend([f"Treino: {auc_train:.4f}",
-                f"Teste: {auc_test:.4f}",
-                f"OOT: {auc_oot:.4f}"])
+
+    plt.legend([
+        f"Treino: {auc_train:.4f}",
+        f"Teste: {auc_test:.4f}",
+        f"OOT: {auc_oot:.4f}"]
+    )
+    
+    # Linha base 
     plt.plot([0,1], [0,1], '--', color='black')
+
     plt.grid(True)
     plt.title("Curva ROC")
     plt.savefig("curva_roc.png")
     
+    # Save e registra como artefato no MLflow  
     mlflow.log_artifact('curva_roc.png')
 # %%
-# Feature Importance
+# --- FEATURE IMPORTANCE ---
 
-features_names = model_pipeline[:-1].transform(X_train.head(1)).columns.tolist()
-feature_importance = pd.Series(model_pipeline[-1].feature_importances_, 
-                               index=features_names)
+# Recupera melhor modelo após GridSearch
+best_model = model_pipeline.named_steps['Algoritmo'].best_estimator_
 
-# A importancia das variaveis está muito bem distribuído
-feature_importance.sort_values(ascending=False)
+# Aplica transformações do pipeline sem o modelo
+X_transformed = model_pipeline[:-1].transform(X_train)
 
-# Data leakage 
-# Todas as métricas independentes das bases
-# Prever quem vai ganhar a corrida e usar o tempo de prova
-# É variável resposta só que de um jeito diferente
-# Probabilidade de uma pessoa cancelar plano de internet e usar a quantidade de vezes que ela ligou para cancelar
+# Nome das features após encoding
+features_names = X_transformed.columns.tolist()
 
-# ASSESS - Persistir Modelo
+# Calcula importância das features
+feature_importance = pd.Series(
+    best_model.feature_importances_, 
+    index=features_names
+).sort_values(ascending=False)
 
-""" model_series = pd.Series({
-    "model" : model_pipeline,
-    "features" : X_train.columns.tolist(),
-    "auc_train" : auc_train,
-    "auc_test" : auc_test,
-    "auc_oot" : auc_oot
-})
-
-model_series.to_pickle("model_fiel.pkl") """
+feature_importance

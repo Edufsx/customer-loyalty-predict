@@ -1,37 +1,57 @@
+-- Criação da Tabela Base Analítica
 CREATE TABLE abt_fiel AS
 
+-- Prepara amostragem aleatória de cada cliente e define variável target
 WITH tb_join AS (
+    
     SELECT t1.dtRef,
            t1.idCliente,
            t1.descLifeCycle,
            t2.descLifeCycle,
-        CASE WHEN t2.descLifeCycle = '02-FIEL' THEN 1 ELSE 0 END AS flFiel,
-        row_number() OVER (PARTITION BY t1.idCliente ORDER BY random()) AS randomCol
+           
+           -- Target: Cliente será fiel depois de 28 dias? Se sim, atribui 1
+           CASE 
+               WHEN t2.descLifeCycle = '02-FIEL' THEN 1 
+               ELSE 0
+           END AS flFiel,
+           
+           -- Ordena linhas aleatoriamente por cliente (amostragem aleatória das datas)
+           ROW_NUMBER() OVER (PARTITION BY t1.idCliente ORDER BY RANDOM()) AS randomCol
 
     FROM life_cycle AS t1
 
     LEFT JOIN life_cycle AS t2
-    ON t1.idCliente = t2.idCliente
-    AND date(t1.dtRef, '+28 day') = date(t2.dtRef)
+        ON t1.idCliente = t2.idCliente
+    AND DATE(t1.dtRef, '+28 day') = DATE(t2.dtRef)
 
-    WHERE ((t1.dtRef >= '2024-03-01' AND t1.dtRef <= '2025-08-01') 
-            OR t1.dtRef = '2025-09-01')
+    -- Filtra período para seleção da amostra 
+    WHERE((t1.dtRef >= '2024-03-01' AND t1.dtRef <= '2026-02-01') 
+            OR t1.dtRef = '2026-03-01')
+    -- Remove clientes zumbi para não distorcer o modelo de predições
     AND t1.descLifeCycle <> '05-ZUMBI'
 
 ),
 
+-- Realiza amostragem aleatória das datas, selecionando duas datas por cliente
 tb_cohort AS (
 
     SELECT dtRef,
            idCliente,
            flFiel
-
     FROM tb_join
+   
     WHERE randomCol <= 2
+    
     ORDER BY idCliente, dtRef
 
 )
 
+/*
+Agrega todas as features dos clientes nas datas da amostragem aleatória:
+- Features Transacionais;
+- Features relacionadas ao Ciclo de Vida;
+- Features relacionadas à Plataforma de Cursos.
+*/
 SELECT t1.*,
        t2.idadeDias,
        t2.qtdeAtivacaoVida,
@@ -89,7 +109,9 @@ SELECT t1.*,
        t2.qtdeChurnModel,
        t3.qtdeFrequencia,
        t3.descLifeCycleAtual,
+       t3.descClusterAtual,
        t3.descLifeCycleD28,
+       t3.descClusterD28,
        t3.pctCurioso,
        t3.pctFiel,
        t3.pctTurista,
@@ -134,13 +156,13 @@ SELECT t1.*,
 FROM tb_cohort AS t1
 
 LEFT JOIN fs_transacional AS t2
-ON t1.idCliente = t2.idCliente
+    ON t1.idCliente = t2.idCliente
 AND t1.dtRef = t2.dtRef
 
 LEFT JOIN fs_life_cycle AS t3
-ON t1.idCliente = t3.idCliente
+    ON t1.idCliente = t3.idCliente
 AND t1.dtRef = t3.dtRef
 
 LEFT JOIN fs_education AS t4
-ON t1.idCliente = t4.idCliente
+    ON t1.idCliente = t4.idCliente
 AND t1.dtRef = t4.dtRef
