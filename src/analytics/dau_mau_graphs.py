@@ -10,7 +10,7 @@ def load_metric(
         engine: sqlalchemy.engine.base.Engine
 ) -> pd.DataFrame:
   
-    # Abre, salva e fecha o arquivo contendo a consulta SQL 
+  # Abre, salva o conteúdo do arquivo contendo a consulta SQL e o fecha
     with open(path) as open_file:
         query = open_file.read()
   
@@ -30,7 +30,7 @@ def graph(
     
     # Converte a coluna de data para datetime
     df[x_date] = pd.to_datetime(df[x_date])
-    print(df.dtypes)
+    
     # Define o tamanho da figura
     plt.figure(figsize=(12,6))
     

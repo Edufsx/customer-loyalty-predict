@@ -1,4 +1,4 @@
--- Constrói tabela com datas e usuários distintos 
+-- Seleciona quais dias cada cliente esteve ativo
 WITH tb_daily_users AS (
      
     SELECT DISTINCT 
@@ -28,7 +28,7 @@ tb_mau AS (
     FROM tb_reference_day AS t1
 
     LEFT JOIN tb_daily_users AS t2
-    ON  t2.dtDia <= t1.dtRef
+        ON t2.dtDia <= t1.dtRef
     AND (JULIANDAY(t1.dtRef) - JULIANDAY(t2.dtDia)) < 28
 
     -- Agrupa pela data de referência

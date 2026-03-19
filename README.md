@@ -163,8 +163,8 @@ tb_mau AS (
     FROM tb_reference_day AS t1
 
     LEFT JOIN tb_daily_users AS t2
-    ON  t2.dtDia <= t1.dtRef
-    AND (JULIANDAY(t1.dtRef) - JULIANDAY(t2.dtDia)) < 28
+        ON t2.dtDia <= t1.dtRef
+        AND (JULIANDAY(t1.dtRef) - JULIANDAY(t2.dtDia)) < 28
 
     -- Agrupa pela data de referência
     GROUP BY t1.dtRef
@@ -193,30 +193,15 @@ Diante deste cenário, torna-se relevante tomar medidas para aumentar o engajame
 Nesse contexto, um modelo de aprendizado de máquina capaz de prever os usuários com maior probabilidade de se tornarem fiéis pode auxiliar na definição de ações de Marketing com o intuito de incentivar o engajamento e recorrência desse público.
 
 ### Geração dos Gráficos para Análise
-Para gerar os gráficos das métricas DAU e MAU foi utilizado o seguinte script Python:
+Para gerar os gráficos das métricas DAU e MAU foi utilizado um script Python com a principal função sendo a seguinte:
 
 ```Python
-#%%
 import pandas as pd
 import sqlalchemy
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# Executa uma consulta SQL e retorna o resultado como DataFrame 
-def load_metric(
-        path: str, 
-        engine: sqlalchemy.engine.base.Engine
-) -> pd.DataFrame:
-  
-    # Abre, salva e fecha o arquivo contendo a consulta SQL 
-    with open(path) as open_file:
-        query = open_file.read()
-  
-    # Executa a consulta e armazena o resultado em um DataFrame
-    df = pd.read_sql(query, engine)
-  
-    return df 
-
+[...]
 # Gera um gráfico de série temporal da métrica de Usuários Ativos  
 def graph(
         df: pd.DataFrame, 
@@ -228,7 +213,7 @@ def graph(
     
     # Converte a coluna de data para datetime
     df[x_date] = pd.to_datetime(df[x_date])
-    print(df.dtypes)
+    
     # Define o tamanho da figura
     plt.figure(figsize=(12,6))
     
@@ -250,37 +235,154 @@ def graph(
 
     # Exibe o gráfico
     plt.show()
-
-# Cria uma engine do SQLAlchemy que gerencia conexões com o banco de dados SQLite
-engine = sqlalchemy.create_engine(
-    "sqlite:///../../data/loyalty-system/database.db"
-)
-
-# DataFrame do Daily Active Users (DAU)
-df_dau = load_metric("dau.sql", engine)
-
-# Gráfico do DAU
-graph(
-    df_dau, 
-    "dtDia", 
-    "DAU", 
-    "blue", 
-    "Daily Active Users (DAU)"
-)
-
-# DataFrame do Monthly Active Users (MAU)
-df_mau = load_metric("mau.sql", engine)
-
-# Gráfico do MAU em D28
-graph(df_mau, 
-      "dtRef", 
-      "MAU", 
-      "purple", 
-      "Monthly Active Users (MAU) - D28"
-)
+[..]
 ```
+
+
+O script completo em Python pode ser encontrado em: [src\analytics\dau_mau_graphs.py](src\analytics\dau_mau_graphs.py). 
+
 ## Preparação dos Dados
-falar sobre
+
+Nessa etapa iniciou-se a construção da Tabela Base Analítica (ABT).
+
+### Metodologia RFV
+
+As primeiras características dos usuários foram construídas utilizando a metodologia Recência, Frequência e Valor (RFV), que buscou segmentar os clientes com base nas métricas de:
+
+- **Recência**: quantidade de dias desde a última transação (ou ativação) do usuário;
+-  **Frequência**: quantidade total de transações (ou ativações) em um determinado período;
+- **Valor**: valor total das transações de um usuário.
+
+A metodologia RFV foi utilizada para segmentar os clientes e possibilitar a construção do ciclo de vida dos usuários. 
+
+#### Ciclo de Vida dos Usuários e Recência
+
+O ciclo de vida do usuário, a primeira coluna da ABT a ser criada, é uma forma de classificar o comportamento dos consumidores durante a sua jornada com uma marca.
+
+No contexto desse projeto, esse sistema de classificação foi desenvolvido considerando a métrica de Recência, a penúltima ativação e primeira ativação dos clientes. Assim, os estados do Ciclo de Vida de um usuário são:
+
+- **Curioso**: Primeira Ativação $\leq$ 7 dias;
+- **Fiel**: Última Ativação $\leq$ 7 dias e Penúltima Ativação $\leq$ 14 dias;
+- **Turista**: 8 dias $\leq$ Última Ativação $\leq$ 14 dias;
+- **Desencantado**: 15 dias $\leq$ Última Ativação $\leq$ 28 dias;
+- **Zumbi**: última Ativação > 28 dias.
+
+Além disso, foram desenvolvidas dois estados de transição entre as classificações anteriores:  
+
+- **Reconquistado**: cliente era Desencantado e voltou a ser Fiel; 
+- **Reborn**: cliente era Zumbi e voltou a ser Fiel.
+
+Dessa forma, a construção do Ciclo de Vida teve como parte principal da consulta em SQL o seguinte trecho:
+
+```SQL
+[...]
+-- Constrói tabela auxiliar para encontrar o nº de dias desde a penúltima de ativação
+tb_rn AS (
+  
+    SELECT *,
+           -- Enumera as linhas dividindo por cliente e ordenando por data mais recente 
+           ROW_NUMBER() OVER (PARTITION BY idCliente ORDER BY dtDia DESC) AS rnDia
+    FROM tb_daily
+
+),
+[...]
+-- Constrói tabela definindo o ciclo de vida do usuário
+tb_life_cycle AS (
+    
+    SELECT t1.*,
+           t2.qtdeDiasPenultimaAtivacao,
+           
+           CASE
+               WHEN t1.qtdeDiasPrimTransacao <= 7 THEN 
+                        "01-CURIOSO"
+                
+               WHEN t1.qtdeDiasUltimaAtivacao <= 7 
+               AND t2.qtdeDiasPenultimaAtivacao - t1.qtdeDiasUltimaAtivacao <= 14 THEN 
+                        "02-FIEL"
+                
+               WHEN t1.qtdeDiasUltimaAtivacao BETWEEN 8 AND 14 THEN 
+                        "03-TURISTA"
+                
+               WHEN t1.qtdeDiasUltimaAtivacao BETWEEN 15 AND 28 THEN 
+                        "04-DESENCANTADO"
+                
+               WHEN t1.qtdeDiasUltimaAtivacao > 28 THEN 
+                        "05-ZUMBI" 
+                
+               WHEN t1.qtdeDiasUltimaAtivacao <= 7 
+               AND t2.qtdeDiasPenultimaAtivacao - t1.qtdeDiasUltimaAtivacao BETWEEN 15 AND 27 THEN 
+                        "02-RECONQUISTADO"
+                
+               WHEN t1.qtdeDiasUltimaAtivacao <= 7 
+               AND t2.qtdeDiasPenultimaAtivacao - t1.qtdeDiasUltimaAtivacao >= 28 THEN
+                        "02-REBORN"
+           END AS descLifeCycle
+    
+    FROM tb_idade AS t1
+
+    LEFT JOIN tb_penultima_ativacao AS t2
+        ON t1.idCliente = t2.idCliente
+
+),
+[...]
+```
+
+O código completo pode ser encontrado em: [src/analytics/life_cycle.sql](src/analytics/life_cycle.sql).
+#### Frequência e Valor
+
+Para realizar uma segmentação dentro de cada etapa do ciclo de vida foram calculadas a frequência, quantidade de transações, e o valor, quantidade de pontos positivos acumulados, de cada usuário, considerando uma janela de 28 dias. Para isso utilizou-se a seguinte consulta em SQL:
+
+```SQL
+-- Constrói tabela com Frequência e Valor de cada usuário em D28
+SELECT idCliente,
+       -- Conta quantos dias diferentes foram feitas transações
+       COUNT(DISTINCT DATE(DtCriacao)) AS qtdeFrequencia,
+       
+       -- Soma apenas pontos positivos para ser o Valor
+       sum(
+           CASE 
+                WHEN qtdePontos > 0 THEN qtdePontos
+                ELSE 0 
+           END
+        ) AS qtdePontosPos
+
+FROM transacoes
+
+-- Delimita uma janela de 28 dias anteriores a uma data 
+WHERE DtCriacao < "{date}"
+AND DtCriacao >= date("{date}", "-28 day")
+
+GROUP BY idCliente
+
+ORDER BY qtdeFrequencia DESC
+```
+
+Para realizar efetivar essa consulta e analisar graficamente os dados obtidos com o intuito de definir as segmentações, utilizou-se o seguinte script em Python:
+
+
+Explicar o algoritmo KMeans
+```
+
+```
+
+-- Tabela com segmentação de usuários baseada na Frequência e no Valor
+tb_cluster AS (
+        SELECT *,
+
+               CASE
+                   WHEN qtdeFrequencia <= 10 AND qtdePontosPos >= 1500 THEN '12-HYPERS'
+                   WHEN qtdeFrequencia > 10 AND qtdePontosPos >= 1500 THEN '22-EFICIENTES'
+                   WHEN qtdeFrequencia <= 10 AND qtdePontosPos >= 750 THEN '10-INDECISOS'
+                   WHEN qtdeFrequencia > 10 AND qtdePontosPos >= 750 THEN '21-ESFORCADOS'
+                   WHEN qtdeFrequencia < 5  THEN '00-LURKER'
+                   WHEN qtdeFrequencia <= 10  THEN '01-PREGUICOSO'
+                   WHEN qtdeFrequencia > 10  THEN '20-POTENCIAL'
+                END AS cluster
+
+        FROM tb_freq_valor
+)
+
+TENHO QUE MUDAR TODOS OS CÓDIGOS QUE EU FIZ
 
 ## Modelagem
 SEMMA
@@ -323,74 +425,11 @@ aaaa
 
 ### Banco de Dados do Sistema de Fidelidade
 
-O banco de dados do sistema de fidelidade possui as seguintes tabelas:
-
-* 1ª Tabela: transacoes;
-
-Descrição: Registra as transações realizadas pelos clientes.
-
-| Coluna             | Tipo      | Descrição |
-|-------------------|-----------|-----------|
-| IdTransacao       | text      | Identificador único da transação (PK) |
-| IdCliente         | text      | Cliente que realizou a transação (FK) |
-| DtCriacao         | datetime  | Data da transação |
-| QtdePontos        | bigint    | Pontos envolvidos na transação |
-| DescSistemaOrigem | text      | Origem da transação |
-
-* 2ª Tabela: clientes;
-
-Descrição: Armazena informações dos clientes do sistema.
-
-| Coluna          | Tipo    | Descrição |
-|-----------------|---------|-----------|
-| idCliente       | text    | Identificador único do cliente (PK) |
-| flEmail         | bigint  | Flag de cadastro de email |
-| flTwitch        | bigint  | Flag de cadastro de Twitch |
-| flYouTube       | bigint  | Flag de cadastro de YouTube |
-| flBlueSky       | bigint  | Flag de cadastro de BlueSky |
-| flInstagram     | bigint  | Flag de cadastro de Instagram |
-| qtdePontos      | bigint  | Pontos acumulados |
-| DtCriacao       | datetime| Data de criação do registro |
-| DtAtualizacao   | datetime| Data da última atualização |
-
-* 3ª Tabela: produtos;
-
-Descrição: Armazena informações sobre os produtos disponíveis.
-
-| Coluna                  | Tipo  | Descrição |
-|-------------------------|-------|-----------|
-| IdProduto               | text  | Identificador único do produto (PK) |
-| DescNomeProduto         | text  | Nome do produto |
-| DescDescricaoProduto    | text  | Descrição detalhada do produto |
-| DescCategoriaProduto    | text  | Categoria do produto |
-
-
-* 4ª Tabela: transacao_produto.
-
-Descrição: Relaciona produtos às transações.
-
-| Coluna             | Tipo   | Descrição |
-|-------------------|--------|-----------|
-| idTransacaoProduto| text   | Identificador único (PK) |
-| IdTransacao       | text   | Transação relacionada (FK) |
-| IdProduto         | text   | Produto relacionado (FK) |
-| QtdeProduto       | bigint | Quantidade do produto na transação |
-| vlProduto         | bigint | Valor do produto na transação |
-
 O esquema do banco de dados do sistema de fidelidade é o seguinte:
 
 ![schema_loyalty_sytem](img\schema_loyalty_system.png)
 
 ### Banco de Dados da Plataforma de Educação
-
-O banco de Dados da plataforma de educação é composto pelas seguintes tabelas:
-
-* 1ª Tabela: curso_episodio_completos
-
-|        Colunas        |  Tipo  |  Descrição  |
-|-----------------------|--------|-------------|
-|idCursoEpisodioCompleto| bigint |aaa |
-
 Já o esquema do banco de dados da plataforma de educação é o seguinte:
 
 ![schema_education_platform](img\schema_education_platform.png)

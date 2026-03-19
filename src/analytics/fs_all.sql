@@ -1,3 +1,11 @@
+/* 
+Agrega todas as features dos cliente:
+- Features Transacionais;
+- Features relacionadas ao Ciclo de Vida;
+- Features relacionadas à Plataforma de Cursos.
+
+O objetivo é realizar predições com as features em data de referência mais recente 
+*/
 SELECT t1.dtRef,
        t1.idCliente,
        t1.idadeDias,
@@ -56,7 +64,9 @@ SELECT t1.dtRef,
        t1.qtdeChurnModel,
        t2.qtdeFrequencia,
        t2.descLifeCycleAtual,
+       t2.descClusterAtual,
        t2.descLifeCycleD28,
+       t2.descClusterD28,
        t2.pctCurioso,
        t2.pctFiel,
        t2.pctTurista,
@@ -97,15 +107,17 @@ SELECT t1.dtRef,
        t3.tramparLakehouse2024,
        t3.tseAnalytics2024,
        t3.qtdDiasUltimaAtiv 
-
 FROM fs_transacional AS t1
 
 LEFT JOIN fs_life_cycle AS t2
-ON t1.idCliente = t2.idCliente
+    -- Features do mesmo cliente e da mesma data de refeRência 
+    ON t1.idCliente = t2.idCliente
 AND t1.dtRef = t2.dtRef
 
 LEFT JOIN fs_education AS t3
-ON t1.idCliente = t3.idCliente
+    -- Features do mesmo cliente e da mesma data de refeRência 
+    ON t1.idCliente = t3.idCliente
 AND t1.dtRef = t3.dtRef
 
-WHERE t1.dtRef = (SELECT max(dtRef) FROM fs_transacional)
+-- Seleciona a data de referência mais recente 
+WHERE t1.dtRef = (SELECT MAX(dtRef) FROM fs_transacional)

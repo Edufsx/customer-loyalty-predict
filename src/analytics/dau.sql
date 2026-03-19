@@ -2,6 +2,7 @@
 
 -- Seleciona uma coluna que contém apenas a data 
 SELECT DATE(DtCriacao) as dtDia,
+
        -- Conta clientes distintos em uma data (DAU) 
        COUNT(DISTINCT idCliente) as DAU
 

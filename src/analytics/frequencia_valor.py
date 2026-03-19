@@ -2,68 +2,74 @@
 import pandas as pd 
 import sqlalchemy
 import matplotlib.pyplot as plt
+from sklearn import cluster, preprocessing
+import seaborn as sns
 
+# Função auxiliar para carregar consultas a partir arquivos
+def import_query(path):
+    with open(path) as open_file:
+        return open_file.read()
+
+# Cria conexão com o banco SQLite
 engine = sqlalchemy.create_engine(
     "sqlite:///../../data/loyalty-system/database.db"
 )
 
-def import_query(path):
-    with open(path) as open_file:
-        return open_file.read()
-    
+# Importa a consulta de frequência e valor
 query = import_query("frequencia_valor.sql")
 
-# %%
+# Executa a consulta considerando uma data de referência
 df = pd.read_sql(query.format(date='2025-09-01'), engine)
 
-df = df[df["qtdePontosPos"] < 4000]
-
-df
-# %%
+# Visualização inicial da relação entre frequência e valor
 plt.plot(df["qtdeFrequencia"], df["qtdePontosPos"], 'o')
-plt.grid(True)
 plt.xlabel("frequencia")
 plt.ylabel("valor")
+plt.grid(True)
 plt.show()
 
-#%%
-from sklearn import cluster, preprocessing
+# %%
+# Remoção do Outlier para evitar distorção do agrupamento
+df = df[df["qtdePontosPos"] < 4000]
 
-# PADRONIZANDO para clusterizar 
-minmax = preprocessing.MinMaxScaler()
+# Padroniza os dados para mesma escala (necessário para agrupamento)   
+minmax = preprocessing.MinMaxScaler(feature_range=(0,1))
 X = minmax.fit_transform(df[["qtdeFrequencia", "qtdePontosPos"]])
 
+# Aplicação do algoritmo KMeans para segmentação de clientes
 kmean = cluster.KMeans(n_clusters=5, 
                        random_state=42, 
                        max_iter=1000)
 kmean.fit(X)
 
+# Atribui o agrupamento correspondente a cada cliente
 df["cluster_calc"] = kmean.labels_
-df.groupby(by="cluster_calc")["idCliente"].count()
 
-#%%
-import seaborn as sns
+# Distribuição de clientes por agrupamento 
+qtde_dados_grupo = df.groupby(by="cluster_calc")["IdCliente"].count()
+print(qtde_dados_grupo)
 
-# É dificil explicar para o time de negócio o porque estamos agrupando desse jeito
-# Uma bolinha laranja ta bem perto da azul, pq ela é de um time e não de outro?
-# Na hora de plotar eu não uso a normalização para interpretar
+# Visualização dos agrupamento obtidos pelo algoritmo
+sns.scatterplot(data=df, 
+                x="qtdeFrequencia",
+                y="qtdePontosPos",
+                hue="cluster_calc",
+                palette="deep")
+plt.grid()
+plt.show()
+# %%
+# Visualização dos corte manuais para construção dos segmentos
 sns.scatterplot(data=df, 
                 x="qtdeFrequencia",
                 y="qtdePontosPos",
                 hue="cluster_calc",
                 palette="deep")
 
+# Linhas de separação baseadas na distribuição dos dados apresentadas pelo algoritmo
 plt.hlines(y=1500, xmin=0, xmax=25, colors="black")
 plt.hlines(y=750, xmin=0, xmax=25, colors="black")
-
 plt.vlines(x=4, ymin=0, ymax=750, colors="black")
 plt.vlines(x=10, ymin=0, ymax=3000, colors="black")
-plt.grid()
 
-#%%
-sns.scatterplot(data=df, 
-                x="qtdeFrequencia",
-                y="qtdePontosPos",
-                hue="cluster",
-                palette="deep")
 plt.grid()
+plt.show()
