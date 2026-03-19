@@ -1,29 +1,41 @@
-WITH tb_daily AS (
-    
-    SELECT DISTINCT
-        date(substr(DtCriacao, 0, 11)) AS dtDia,
+-- Seleciona quais dias cada cliente esteve ativo
+WITH tb_daily_users AS (
+     
+    SELECT DISTINCT 
+        DATE(DtCriacao) AS dtDia,
         idCliente
     FROM transacoes
-    ORDER BY dtDia
+
 ),
 
-tb_distinct_day AS (
-    SELECT 
-            DISTINCT dtDia AS dtRef
-    FROM tb_daily
+-- Constrói tabela com todos os dias da base
+tb_reference_day AS (
+    
+    SELECT DISTINCT 
+        dtDia AS dtRef
+    FROM tb_daily_users
+
+),
+
+-- Calcula Usuários Mensais Ativos (MAU)
+tb_mau AS (
+
+    SELECT t1.dtRef,
+           -- Usuários distintos ativos nos últimos 28 dias
+           COUNT(DISTINCT t2.idCliente) AS MAU,
+           -- Quantidade de dias observados nos últimos 28 dias
+           COUNT(DISTINCT t2.dtDia) AS qtdDias
+    FROM tb_reference_day AS t1
+
+    LEFT JOIN tb_daily_users AS t2
+        ON t2.dtDia <= t1.dtRef
+    AND (JULIANDAY(t1.dtRef) - JULIANDAY(t2.dtDia)) < 28
+
+    -- Agrupa pela data de referência
+    GROUP BY t1.dtRef
+
 )
 
-SELECT t1.dtRef,
-        count(DISTINCT idCliente) AS MAU,
-        count(DISTINCT t2.dtDia) AS qtdDias
-FROM tb_distinct_day AS t1
-
-LEFT JOIN tb_daily AS t2
--- dtRef é meu dia 0
-ON  t2.dtDia <= t1.dtRef
--- Por isso não é maior ou igual a 28
-AND julianday(t1.dtRef) - julianday(t2.dtDia) < 28
-
-GROUP BY t1.dtRef
-
-ORDER BY t1.dtRef ASC
+SELECT *
+FROM tb_mau
+ORDER BY dtRef

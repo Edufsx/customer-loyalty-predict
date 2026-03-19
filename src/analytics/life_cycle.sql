@@ -1,100 +1,147 @@
--- Segmentação de Marketing
-
--- Idade Base 
--- Recência: qtd de dias desde a ultima interação
--- PODERIA olhar para a curva de Recência
--- CRM no marketing (Customer Relationship Management)
-
--- CICLO DE VIDA DO USUÁRIO
--- Curiosa < 7 (Curiosa)
--- Recência < 7 dias AND Idade Base > 7 (Fiel)
--- 7 < Recência < 15 dias AND Idade Base > 7 (Turista)
--- 15 < Recência < 28 dias AND Idade Base > 7 (Desencantado)
--- Recência > 28 dias AND Idade Base > 7 (Zumbi - Churn)
--- Desencantado -> Fiel (Reconquistado)
--- Zumbi -> Fiel (Reborn)
-
--- Idade Base
--- Data Última Transação
--- Data Penúltima Transação
-
+-- Seleciona quais dias cada cliente esteve ativo
 WITH tb_daily AS (
-    SELECT  DISTINCT
-            idCliente,
-            substr(DtCriacao, 1, 10) as dtDia
+
+    SELECT DISTINCT
+        idCliente,
+        DATE(DtCriacao) as dtDia
     FROM transacoes
-    WHERE dtDia < "{date}"
+
+    -- Considera apenas histórico anterior à data de referência 
+    WHERE dtDia < '{date}'
+
 ),
 
+-- Calcula tabela com a Recência e Idade na base
 tb_idade AS (
+
     SELECT idCliente,
-            CAST(julianday('{date}') - julianday(min(dtDia)) AS INT) AS qtdeDiasPrimTransacao,
-            CAST(julianday('{date}') - julianday(max(dtDia)) AS INT) AS qtdeDiasUltimaAtivacao
+           CAST(JULIANDAY('{date}') - JULIANDAY(min(dtDia)) AS INT) AS qtdeDiasPrimTransacao,
+           CAST(JULIANDAY('{date}') - JULIANDAY(max(dtDia)) AS INT) AS qtdeDiasUltimaAtivacao
     FROM tb_daily
+    
     GROUP BY idCliente
 ),
 
+-- Tabela auxiliar para calcular a quantidade de dias desde a penúltima transação
 tb_rn AS (
+  
     SELECT *,
-            row_number() OVER (PARTITION BY idCliente ORDER BY dtDia DESC) AS rnDia
+           -- Enumera ativações por cliente para permitir extração da última linha 
+           ROW_NUMBER() OVER (PARTITION BY idCliente ORDER BY dtDia DESC) AS rnDia
     FROM tb_daily
+
 ),
 
+-- Calcula a Recência desde a penúltima ativação 
 tb_penultima_ativacao AS (
+
     SELECT *,
-            CAST(julianday('{date}') - julianday(dtDia) AS INT) AS qtdeDiasPenultimaAtivacao
+           CAST(JULIANDAY('{date}') - JULIANDAY(dtDia) AS INT) AS qtdeDiasPenultimaAtivacao
     FROM tb_rn
+    
     WHERE rnDia = 2
+
 ),
 
+-- Classifica clients em estágios do ciclo de vida com base na Recência
 tb_life_cycle AS (
+    
     SELECT t1.*,
-            t2.qtdeDiasPenultimaAtivacao,
-            CASE
-                WHEN qtdeDiasPrimTransacao <= 7 THEN "01-CURIOSO"
-                WHEN qtdeDiasUltimaAtivacao <= 7 AND qtdeDiasPenultimaAtivacao - qtdeDiasUltimaAtivacao <= 14 THEN "02-FIEL"
-                WHEN qtdeDiasUltimaAtivacao BETWEEN 8 AND 14  THEN "03-TURISTA"
-                WHEN qtdeDiasUltimaAtivacao BETWEEN 15 AND 28 THEN "04-DESENCANTADO"
-                WHEN qtdeDiasUltimaAtivacao > 28 THEN "05-ZUMBI" 
-                WHEN qtdeDiasUltimaAtivacao <= 7 AND qtdeDiasPenultimaAtivacao - qtdeDiasUltimaAtivacao BETWEEN 15 AND 27 THEN "02-RECONQUISTADO"
-                WHEN qtdeDiasUltimaAtivacao <= 7 AND qtdeDiasPenultimaAtivacao - qtdeDiasUltimaAtivacao >= 28 THEN "02-REBORN"
-            END AS descLifeCycle
+           t2.qtdeDiasPenultimaAtivacao,
+           
+           -- Regras de classificação do ciclo de vida:
+           CASE
+               WHEN t1.qtdeDiasPrimTransacao <= 7 THEN 
+                        '01-CURIOSO'
+                
+               WHEN t1.qtdeDiasUltimaAtivacao <= 7 
+               AND t2.qtdeDiasPenultimaAtivacao - t1.qtdeDiasUltimaAtivacao <= 14 THEN 
+                        '02-FIEL'
+                
+               WHEN t1.qtdeDiasUltimaAtivacao BETWEEN 8 AND 14 THEN 
+                        '03-TURISTA'
+                
+               WHEN t1.qtdeDiasUltimaAtivacao BETWEEN 15 AND 28 THEN 
+                        '04-DESENCANTADO'
+                
+               WHEN t1.qtdeDiasUltimaAtivacao > 28 THEN 
+                        '05-ZUMBI' 
+                
+               WHEN t1.qtdeDiasUltimaAtivacao <= 7 
+               AND t2.qtdeDiasPenultimaAtivacao - t1.qtdeDiasUltimaAtivacao BETWEEN 15 AND 27 THEN 
+                        '02-RECONQUISTADO'
+                
+               WHEN t1.qtdeDiasUltimaAtivacao <= 7 
+               AND t2.qtdeDiasPenultimaAtivacao - t1.qtdeDiasUltimaAtivacao >= 28 THEN
+                        '02-REBORN'
+           END AS descLifeCycle
+    
     FROM tb_idade AS t1
+
     LEFT JOIN tb_penultima_ativacao AS t2
-    ON t1.idCliente = t2.idCliente
+        ON t1.idCliente = t2.idCliente
+
 ),
 
+-- Calcula métricas de Frequência e Valor em janela móvel de 28 dias 
 tb_freq_valor AS (
-        SELECT idCliente,
-                count(DISTINCT substr(DtCriacao, 0, 11)) AS  qtdeFrequencia,
-                sum(CASE WHEN qtdePontos > 0 THEN qtdePontos ELSE 0 END) AS qtdePontosPos
-        FROM transacoes
-        WHERE DtCriacao < "{date}"
-        AND DtCriacao >= date("{date}", "-28 day")
-        GROUP BY 1
-        ORDER BY qtdeFrequencia DESC
+    
+    SELECT idCliente,
+           -- Frequência: números de dias ativos na janela
+           COUNT(DISTINCT DATE(DtCriacao)) AS qtdeFrequencia,
+        
+           -- Valor: quantidade de pontos positivos na janela
+           SUM(
+               CASE 
+                    WHEN qtdePontos > 0 THEN qtdePontos
+                    ELSE 0 
+               END
+           ) AS qtdePontosPos
+
+    FROM transacoes
+
+    -- Define janela móvel de 28 dias anterior a data de referência
+    WHERE DtCriacao < '{date}'
+    AND DtCriacao >= date('{date}', '-28 day')
+
+    GROUP BY idCliente
+
+    ORDER BY qtdeFrequencia DESC
+
 ),
 
+-- Segmentação dos usuários com base em Frequência e Valor (inspirado na RFV)
 tb_cluster AS (
         SELECT *,
-                CASE
-                        WHEN qtdeFrequencia <= 10 AND qtdePontosPos >= 1500 THEN '12-HYPERS'
-                        WHEN qtdeFrequencia > 10 AND qtdePontosPos >= 1500 THEN '22-EFICIENTES'
-                        WHEN qtdeFrequencia <= 10 AND qtdePontosPos >= 750 THEN '10-INDECISOS'
-                        WHEN qtdeFrequencia > 10 AND qtdePontosPos >= 750 THEN '21-ESFORCADOS'
-                        WHEN qtdeFrequencia < 5  THEN '00-LURKER'
-                        WHEN qtdeFrequencia <= 10  THEN '01-PREGUICOSO'
-                        WHEN qtdeFrequencia > 10  THEN '20-POTENCIAL'
-                END AS cluster
+
+               -- Regras manuais definidas a partir da distribuição observada
+               CASE
+                   WHEN qtdeFrequencia <= 10 AND qtdePontosPos >= 1500 THEN '12-HYPERS'
+                   WHEN qtdeFrequencia > 10 AND qtdePontosPos >= 1500 THEN '22-EFICIENTES'
+                   WHEN qtdeFrequencia <= 10 AND qtdePontosPos >= 750 THEN '10-INDECISOS'
+                   WHEN qtdeFrequencia > 10 AND qtdePontosPos >= 750 THEN '21-ESFORCADOS'
+                   WHEN qtdeFrequencia < 5  THEN '00-LURKER'
+                   WHEN qtdeFrequencia <= 10  THEN '01-PREGUICOSO'
+                   WHEN qtdeFrequencia > 10  THEN '20-POTENCIAL'
+               END AS cluster
+
         FROM tb_freq_valor
+
 )
 
+-- Consolida ciclo de vida e segmentação RFV 
+tb_join AS(
 
-SELECT date('{date}', '-1 day') AS dtRef,
-        t1.*,
-        t2.qtdeFrequencia,
-        t2.qtdePontosPos,
-        t2.cluster
-FROM tb_life_cycle AS t1
-LEFT JOIN tb_cluster AS t2
-ON t1.idCliente = t2.idCliente
+    SELECT DATE('{date}', '-1 day') AS dtRef,
+           t1.*,
+           t2.qtdeFrequencia,
+           t2.qtdePontosPos,
+           t2.cluster
+    FROM tb_life_cycle AS t1
+    
+    LEFT JOIN tb_cluster AS t2
+        ON t1.idCliente = t2.idCliente
+)
+
+SELECT * 
+FROM tb_join

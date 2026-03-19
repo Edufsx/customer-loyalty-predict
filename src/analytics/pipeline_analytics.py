@@ -2,10 +2,13 @@
 from exec_query import exec_query
 import datetime
 
+# Define de referência (execução diária) 
 now = datetime.datetime.now().strftime('%Y-%m-%d')
 
-# %%
+# --- Definição do Pipeline ---
+# Cada passo contém os argumentos para uma execução de exec_query
 steps = [
+    # 
     {
         "table" : "life_cycle",
         "db_origin" : "loyalty-system",
@@ -47,6 +50,8 @@ steps = [
         "mode" : "replace",
     },
 ]
-
+# %%
+# --- Execução do Pipeline ---
 for s in steps:
+    # Executa cada passo passando parâmetros com kwargs
     exec_query(**s)
