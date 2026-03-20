@@ -1,5 +1,8 @@
--- Criação da Tabela Base Analítica
-CREATE TABLE abt_fiel AS
+-- Remove a tabela anterior para evitar conflito na recriação
+DROP TABLE IF EXISTS abt_fiel;
+
+-- Criação da Tabela Base Analítica (ABT) utilizada no Treino do Modelo
+CREATE TABLE IF NOT EXISTS abt_fiel AS
 
 -- Prepara amostragem aleatória de cada cliente e define variável target
 WITH tb_join AS (
@@ -25,8 +28,10 @@ WITH tb_join AS (
     AND DATE(t1.dtRef, '+28 day') = DATE(t2.dtRef)
 
     -- Filtra período para seleção da amostra 
-    WHERE((t1.dtRef >= '2024-03-01' AND t1.dtRef <= '2026-02-01') 
-            OR t1.dtRef = '2026-03-01')
+    WHERE((t1.dtRef >= '2024-03-01' AND t1.dtRef <= '2025-09-01') 
+            OR t1.dtRef = '2025-10-01' 
+            OR t1.dtRef = '2025-11-01'
+            OR t1.dtRef = '2025-12-01')
     -- Remove clientes zumbi para não distorcer o modelo de predições
     AND t1.descLifeCycle <> '05-ZUMBI'
 
@@ -44,7 +49,7 @@ tb_cohort AS (
     
     ORDER BY idCliente, dtRef
 
-)
+),
 
 /*
 Agrega todas as features dos clientes nas datas da amostragem aleatória:
@@ -52,6 +57,7 @@ Agrega todas as features dos clientes nas datas da amostragem aleatória:
 - Features relacionadas ao Ciclo de Vida;
 - Features relacionadas à Plataforma de Cursos.
 */
+abt_final AS (
 SELECT t1.*,
        t2.idadeDias,
        t2.qtdeAtivacaoVida,
@@ -166,3 +172,7 @@ AND t1.dtRef = t3.dtRef
 LEFT JOIN fs_education AS t4
     ON t1.idCliente = t4.idCliente
 AND t1.dtRef = t4.dtRef
+)
+
+SELECT *
+FROM abt_final;

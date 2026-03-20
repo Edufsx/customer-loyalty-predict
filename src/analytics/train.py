@@ -38,7 +38,7 @@ df.head()
 # --- SAMPLE: Out Of Time (OOT) ---
 
 # Separa amostra mais recente para validação temporal (OOT)
-df_oot = df[df["dtRef"] == df["dtRef"].max()].reset_index(drop=True)
+df_oot = df[df["dtRef"] >= "2025-10-01"].reset_index(drop=True)
 
 #%%
 # --- SAMPLE: Train/Test ---
@@ -48,7 +48,7 @@ target = "flFiel"
 features = df.columns.to_list()[3:]
 
 # Remove OOT para manter dados para Treino e Teste
-df_train_test = df[df["dtRef"] < df["dtRef"].max()].reset_index(drop=True)
+df_train_test = df[df["dtRef"] < "2025-10-01"].reset_index(drop=True)
 
 # Matriz de features
 X = df_train_test[features]
@@ -75,7 +75,12 @@ print(f"Base Teste: {y_test.shape[0]} Unid. | Tx. Target: {100 * y_test.mean():.
 # --- EXPLORE (EDA): Bivariate Analysis --- 
 
 # Features Categóricas
-cat_features = ['descLifeCycleAtual', 'descLifeCycleD28']
+cat_features = [
+    'descLifeCycleAtual', 
+    'descLifeCycleD28', 
+    'descClusterAtual', 
+    'descClusterD28'
+]
 
 # Features Numéricas
 num_features = list(set(features) - set(cat_features))
@@ -95,11 +100,14 @@ bivariada['ratio'] = (bivariada[1] + 0.001) / (bivariada[0] + 0.001)
 
 # Ordenada as features por poder de discriminação (razão entre medianas)
 bivariada = bivariada.sort_values(by='ratio', ascending = False)
-print(bivariada)
+bivariada
 
+#%%
 # Taxa média do target por categoria
 print(df_train.groupby('descLifeCycleAtual')[target].mean())
 print(df_train.groupby('descLifeCycleD28')[target].mean())
+print(df_train.groupby('descClusterAtual')[target].mean())
+print(df_train.groupby('descClusterD28')[target].mean())
 
 # %%
 # --- MODIFY: Type Handling and Features Selection --- 
@@ -117,7 +125,10 @@ drop_features = selection.DropFeatures(to_remove)
 # --- EXPLORE (EDA): Missing Values ---
 
 # Proporção de valores faltantes em cada feature numérica 
-s_na = X_train[list(set(num_features) - set(to_remove))].isna().mean()
+s_na = (X_train[list(set(num_features) - set(to_remove)) + cat_features]
+        .isna()
+        .mean()
+)
 
 # Filtra apenas as features com valores faltantes
 s_na = s_na[s_na>0] 
@@ -128,16 +139,27 @@ s_na
 # --- MODIFY: Missing Handling ---
 
 # Features que a ausência de valor significa 0
-fill_0 = ['github2025', 'python2025', 'sql2020', 'qtdeCursosCompletos']
+fill_0 = [
+    'github2025', 
+    'python2025', 
+    'qtdeCursosCompletos',
+    'qtdeFrequencia',
+    'avgFreqGrupo'
+]
 
 # Imputação com 0 
 imput_0 = imputation.ArbitraryNumberImputer(arbitrary_number=0, 
                                             variables=fill_0)
 
+# Imputação com 1
+imput_1 = imputation.ArbitraryNumberImputer(arbitrary_number=1, 
+                                            variables=['ratioFreqGrupo'])
+
+
 # Imputação de categoria (usuários com apenas 1 transação na base)
-imput_new = imputation.CategoricalImputer(
-    fill_value='Nao-Usuario', 
-    variables=['descLifeCycleD28']
+imput_cat = imputation.CategoricalImputer(
+    fill_value='Missing', 
+    variables=cat_features
 )
 
 # Imputação com valor alto (intervalo indefinido / usuário nunca voltou)
@@ -182,7 +204,7 @@ grid_options = {
 }
 
 # Seleciona modelo e respectiva busca de Hiperparâmetros 
-model_name = "decision_tree"
+model_name = "adaboost"
 model = models[model_name]
 params = grid_options[model_name]
 
@@ -210,12 +232,14 @@ with mlflow.start_run() as r:
     model_pipeline = pipeline.Pipeline(steps=[
         ('Remocao de Features', drop_features),
         ('Imputacao de Zeros', imput_0),
-        ('Imputacao de Nao-usuario', imput_new),
+        ('Imputacao de um', imput_1),
+        ('Imputacao categorica', imput_cat),
         ('Imputacao de 1000', imput_1000),
         ('OneHot Encoding', onehot),
         ('Algoritmo', grid),
     ])
 
+    # --- MODEL ---
     # Treinamento do Pipeline
     model_pipeline.fit(X_train, y_train)
 

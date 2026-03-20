@@ -26,13 +26,13 @@ tb_idade AS (
 tb_rn AS (
   
     SELECT *,
-           -- Enumera ativações por cliente para permitir extração da última linha 
+           -- Enumera transações por cliente para permitir extração da penúltima linha 
            ROW_NUMBER() OVER (PARTITION BY idCliente ORDER BY dtDia DESC) AS rnDia
     FROM tb_daily
 
 ),
 
--- Calcula a Recência desde a penúltima ativação 
+-- Calcula a Recência desde a penúltima transação 
 tb_penultima_ativacao AS (
 
     SELECT *,
@@ -43,7 +43,7 @@ tb_penultima_ativacao AS (
 
 ),
 
--- Classifica clients em estágios do ciclo de vida com base na Recência
+-- Classifica clientes em estágios do ciclo de vida com base na 1ª transação e na Recência 
 tb_life_cycle AS (
     
     SELECT t1.*,
@@ -127,10 +127,10 @@ tb_cluster AS (
 
         FROM tb_freq_valor
 
-)
+),
 
 -- Consolida ciclo de vida e segmentação RFV 
-tb_join AS(
+tb_join AS (
 
     SELECT DATE('{date}', '-1 day') AS dtRef,
            t1.*,
