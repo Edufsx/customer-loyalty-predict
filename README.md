@@ -385,7 +385,7 @@ Após a consulta, utilizou-se um script Python para análise, visualização e s
 
 Buscando uma visualização inicial, criou-se um gráfico de dispersão de Frequência por Valor após a importação dos dados:
 
-![img\freq_value_scatter.png](img\freq_value_scatter.png)
+![Scatter Freq e Value Cluster](img\freq_value_scatter.png)
 
 Com o gráfico foi possível identificar um outlier com bem mais de 4 mil pontos positivos, o qual foi retirado dos dados para não prejudicar o agrupamento.
 
@@ -395,7 +395,7 @@ Em seguida, foi aplicado o algoritmo K-Means, que realiza o agrupamento com base
 
 Com o resultado obtido, construiu-se o seguinte gráfico:
 
-![img\cluster_freq_value_scatter.png](img\cluster_freq_value_scatter.png)
+![Scatter Freq e Value Cluster](img\cluster_freq_value_scatter.png)
 
 Script Python Completo: [src\analytics\frequencia_valor.py](src\analytics\frequencia_valor.py).
 
@@ -464,9 +464,9 @@ aaaa
 
 O esquema do banco de dados do sistema de fidelidade é o seguinte:
 
-![schema_loyalty_sytem](img\schema_loyalty_system.png)
+![Schema Loyalty Sytem](img\schema_loyalty_system.png)
 
 ### Banco de Dados da Plataforma de Educação
 Já o esquema do banco de dados da plataforma de educação é o seguinte:
 
-![schema_education_platform](img\schema_education_platform.png)
+![Schema Education Platform](img\schema_education_platform.png)
