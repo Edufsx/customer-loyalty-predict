@@ -1,3 +1,5 @@
+-- MAU: Monthly Active Users
+
 -- Seleciona quais dias cada cliente esteve ativo
 WITH tb_daily_users AS (
      
