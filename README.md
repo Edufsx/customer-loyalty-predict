@@ -47,6 +47,33 @@ Para construção da ABT e do modelo de predição de fidelidade foram utilizada
  
 ## Como Utilizar (Para Usuários)
 
+Primeiro passo: 
+- get_data
+
+Segundo passo: exec_query:
+- cd src/analytics/
+- python exec_query.py --table fs_education --db_origin education-platform
+- python exec_query.py --table life_cycle
+- python exec_query.py --table fs_life_cycle --db_origin analytics --start 2024-03-01
+- python exec_query.py --table fs_transacional
+
+Terceiro passo:
+- ctrl + shift + q em target.sql
+- train.py
+
+Quarto passo:
+TODO DIA
+- get data
+- pipeline_analytics.py
+
+Quinto passo:
+- predict_fiel ou api_fiel
+ou
+- cd src/api/
+- flask --app api_fiel run --port 5001
+- request_api_fiel
+
+
 ## Entendimento do Negócio
 
 O ecossistema Teo Me Why envolve um sistema de pontos que é movimentado por transações realizadas em troca de produtos virtuais e pelo engajamento nas transmissões ao vivo no canal [Teo Me Why](https://www.twitch.tv/teomewhy) na Twitch e na [plataforma de cursos](https://cursos.teomewhy.org/).
@@ -100,13 +127,14 @@ A primeira análise realizada tinha o objetivo de identificar se estava acontece
 
 Para isso foi utilizada a métrica de **Usuários Ativos Diariamente (DAU)**, considerando como um usuário ativo aquele que realizou ao menos uma transação no sistema de pontos em um determinado dia.
 
-Para calcular essa métrica, foi utilizada uma consulta em SQL ao banco de dados do sistema de pontos:
+Para calcular essa métrica, foi utilizada uma consulta em SQL ao banco de dados do sistema de pontos, utilizando :
 
 ```SQL
 -- DAU: Daily Active Users
 
 -- Seleciona uma coluna que contém apenas a data 
 SELECT DATE(DtCriacao) as dtDia,
+
        -- Conta clientes distintos em uma data (DAU) 
        COUNT(DISTINCT idCliente) as DAU
 
@@ -133,7 +161,9 @@ Por conta dos ruídos gerados no DAU, optou-se por utilizar a métrica de **Usu�
 Para calcular a métrica MAU, foi utilizada a seguinte consulta em SQL:
 
 ```SQL
--- Constrói tabela com datas e usuários distintos 
+-- MAU: Monthly Active Users
+
+-- Seleciona quais dias cada cliente esteve ativo
 WITH tb_daily_users AS (
      
     SELECT DISTINCT 
@@ -164,7 +194,7 @@ tb_mau AS (
 
     LEFT JOIN tb_daily_users AS t2
         ON t2.dtDia <= t1.dtRef
-        AND (JULIANDAY(t1.dtRef) - JULIANDAY(t2.dtDia)) < 28
+    AND (JULIANDAY(t1.dtRef) - JULIANDAY(t2.dtDia)) < 28
 
     -- Agrupa pela data de referência
     GROUP BY t1.dtRef
@@ -193,15 +223,18 @@ Diante deste cenário, torna-se relevante tomar medidas para aumentar o engajame
 Nesse contexto, um modelo de aprendizado de máquina capaz de prever os usuários com maior probabilidade de se tornarem fiéis pode auxiliar na definição de ações de Marketing com o intuito de incentivar o engajamento e recorrência desse público.
 
 ### Geração dos Gráficos para Análise
-Para gerar os gráficos das métricas DAU e MAU foi utilizado um script Python com a principal função sendo a seguinte:
+Para gerar os gráficos das métricas DAU e MAU e obter os dados foram utilizadas as seguintes bibliotecas:
 
 ```Python
 import pandas as pd
 import sqlalchemy
 import matplotlib.pyplot as plt
 import seaborn as sns
+```
 
-[...]
+A principal função do script para gerar o gráfico foi a seguinte:
+
+```Python
 # Gera um gráfico de série temporal da métrica de Usuários Ativos  
 def graph(
         df: pd.DataFrame, 
@@ -235,7 +268,6 @@ def graph(
 
     # Exibe o gráfico
     plt.show()
-[..]
 ```
 
 
@@ -272,50 +304,64 @@ Além disso, foram desenvolvidas dois estados de transição entre as classifica
 - **Reconquistado**: cliente era Desencantado e voltou a ser Fiel; 
 - **Reborn**: cliente era Zumbi e voltou a ser Fiel.
 
-Dessa forma, a construção do Ciclo de Vida teve como parte principal da consulta em SQL o seguinte trecho:
+Na consulta, a função de classificação `ROW_NUMBER()` (uma *Window Function*) foi importante para enumerar as linhas de forma decrescente e obter a segunda data mais recente (penúltima transação):
 
 ```SQL
-[...]
--- Constrói tabela auxiliar para encontrar o nº de dias desde a penúltima de ativação
+-- Tabela auxiliar para calcular a quantidade de dias desde a penúltima transação
 tb_rn AS (
   
     SELECT *,
-           -- Enumera as linhas dividindo por cliente e ordenando por data mais recente 
+           -- Enumera transações por cliente para permitir extração da penúltima linha 
            ROW_NUMBER() OVER (PARTITION BY idCliente ORDER BY dtDia DESC) AS rnDia
     FROM tb_daily
 
 ),
-[...]
--- Constrói tabela definindo o ciclo de vida do usuário
+
+-- Calcula a Recência desde a penúltima transação 
+tb_penultima_ativacao AS (
+
+    SELECT *,
+           CAST(JULIANDAY('{date}') - JULIANDAY(dtDia) AS INT) AS qtdeDiasPenultimaAtivacao
+    FROM tb_rn
+    
+    WHERE rnDia = 2
+
+),
+```
+Na classificação do ciclo de vida, foi utilizada a expressão condicional `CASE WHEN`:
+
+```SQL
+-- Classifica clientes em estágios do ciclo de vida com base na 1ª transação e na Recência 
 tb_life_cycle AS (
     
     SELECT t1.*,
            t2.qtdeDiasPenultimaAtivacao,
            
+           -- Regras de classificação do ciclo de vida:
            CASE
                WHEN t1.qtdeDiasPrimTransacao <= 7 THEN 
-                        "01-CURIOSO"
+                        '01-CURIOSO'
                 
                WHEN t1.qtdeDiasUltimaAtivacao <= 7 
                AND t2.qtdeDiasPenultimaAtivacao - t1.qtdeDiasUltimaAtivacao <= 14 THEN 
-                        "02-FIEL"
+                        '02-FIEL'
                 
                WHEN t1.qtdeDiasUltimaAtivacao BETWEEN 8 AND 14 THEN 
-                        "03-TURISTA"
+                        '03-TURISTA'
                 
                WHEN t1.qtdeDiasUltimaAtivacao BETWEEN 15 AND 28 THEN 
-                        "04-DESENCANTADO"
+                        '04-DESENCANTADO'
                 
                WHEN t1.qtdeDiasUltimaAtivacao > 28 THEN 
-                        "05-ZUMBI" 
+                        '05-ZUMBI' 
                 
                WHEN t1.qtdeDiasUltimaAtivacao <= 7 
                AND t2.qtdeDiasPenultimaAtivacao - t1.qtdeDiasUltimaAtivacao BETWEEN 15 AND 27 THEN 
-                        "02-RECONQUISTADO"
+                        '02-RECONQUISTADO'
                 
                WHEN t1.qtdeDiasUltimaAtivacao <= 7 
                AND t2.qtdeDiasPenultimaAtivacao - t1.qtdeDiasUltimaAtivacao >= 28 THEN
-                        "02-REBORN"
+                        '02-REBORN'
            END AS descLifeCycle
     
     FROM tb_idade AS t1
@@ -324,65 +370,56 @@ tb_life_cycle AS (
         ON t1.idCliente = t2.idCliente
 
 ),
-[...]
 ```
 
 O código completo pode ser encontrado em: [src/analytics/life_cycle.sql](src/analytics/life_cycle.sql).
+
+
 #### Frequência e Valor
 
-Para realizar uma segmentação dentro de cada etapa do ciclo de vida foram calculadas a frequência, quantidade de transações, e o valor, quantidade de pontos positivos acumulados, de cada usuário, considerando uma janela de 28 dias. Para isso utilizou-se a seguinte consulta em SQL:
+Com o intuito criar uma segmentação dentro de cada etapa do ciclo de vida, foi utilizada uma consulta SQL para criar uma tabela com as métricas de frequência e valor de cada usuário, considerando uma janela de 28 dias 
 
-```SQL
--- Constrói tabela com Frequência e Valor de cada usuário em D28
-SELECT idCliente,
-       -- Conta quantos dias diferentes foram feitas transações
-       COUNT(DISTINCT DATE(DtCriacao)) AS qtdeFrequencia,
-       
-       -- Soma apenas pontos positivos para ser o Valor
-       sum(
-           CASE 
-                WHEN qtdePontos > 0 THEN qtdePontos
-                ELSE 0 
-           END
-        ) AS qtdePontosPos
+Consulta SQL Completa: [src\analytics\frequencia_valor.sql](src\analytics\frequencia_valor.sql);
 
-FROM transacoes
+Após a consulta, utilizou-se um script Python para análise, visualização e segmentação baseada nos dados. 
 
--- Delimita uma janela de 28 dias anteriores a uma data 
-WHERE DtCriacao < "{date}"
-AND DtCriacao >= date("{date}", "-28 day")
+Buscando uma visualização inicial, criou-se um gráfico de dispersão de Frequência por Valor após a importação dos dados:
 
-GROUP BY idCliente
+![img\freq_value_scatter.png](img\freq_value_scatter.png)
 
-ORDER BY qtdeFrequencia DESC
-```
+Com o gráfico foi possível identificar um outlier com bem mais de 4 mil pontos positivos, o qual foi retirado dos dados para não prejudicar o agrupamento.
 
-Para realizar efetivar essa consulta e analisar graficamente os dados obtidos com o intuito de definir as segmentações, utilizou-se o seguinte script em Python:
+Para realizar uma segmentação dentro de cada etapa do ciclo de vida, os dados foram inicialmente padronizados para uma escala entre 0 e 1. 
 
+Em seguida, foi aplicado o algoritmo K-Means, que realiza o agrupamento com base na proximidade dos dados em relação as médias de cada grupo.
 
-Explicar o algoritmo KMeans
-```
+Com o resultado obtido, construiu-se o seguinte gráfico:
 
-```
+![img\cluster_freq_value_scatter.png](img\cluster_freq_value_scatter.png)
 
--- Tabela com segmentação de usuários baseada na Frequência e no Valor
-tb_cluster AS (
-        SELECT *,
+Script Python Completo: [src\analytics\frequencia_valor.py](src\analytics\frequencia_valor.py).
 
-               CASE
-                   WHEN qtdeFrequencia <= 10 AND qtdePontosPos >= 1500 THEN '12-HYPERS'
-                   WHEN qtdeFrequencia > 10 AND qtdePontosPos >= 1500 THEN '22-EFICIENTES'
-                   WHEN qtdeFrequencia <= 10 AND qtdePontosPos >= 750 THEN '10-INDECISOS'
-                   WHEN qtdeFrequencia > 10 AND qtdePontosPos >= 750 THEN '21-ESFORCADOS'
-                   WHEN qtdeFrequencia < 5  THEN '00-LURKER'
-                   WHEN qtdeFrequencia <= 10  THEN '01-PREGUICOSO'
-                   WHEN qtdeFrequencia > 10  THEN '20-POTENCIAL'
-                END AS cluster
+Baseado no agrupamento realizado pelo algoritmo, definiu-se os seguintes segmentos:
+ 
+- **22-Eficientes**: Frequência > 10 e Valor $\leq$ 1500;
+- **20-Potencial**: Frequência > 10 e Valor $\leq$ 750
+- **21-Esforçados**: Frequência > 10 e Valor 750 $\leq$ Valor $\leq$ 1500
+- **12-Hypers**: Frequência $\leq$ 10 e Valor $\geq$ 1500;
+- **10-Indecisos**: Frequência <= 10 e 750 $\leq$ Valor $\leq$ 1500
+- **01-Preguiçoso**: 5 $\leq$ Frequência $\leq$ 10 e Valor $\leq$ 750
+- **00-Lurker**: Frequência < 5 e Valor $\leq$ 750 
+  
+Na sequência, definiu-se essa segmentação na consulta do ciclo de vida:
+[src/analytics/life_cycle.sql](src/analytics/life_cycle.sql).
 
-        FROM tb_freq_valor
-)
+### Feature Store Ciclo de Vida
 
-TENHO QUE MUDAR TODOS OS CÓDIGOS QUE EU FIZ
+Pensando em quais as características dos usuários relacionadas ao ciclo de vida seriam mais relevantes para predição de fidelidade, criou-se a *feature store* do ciclo de vida. Nela, foram cridas as seguintes *features*:
+- 
+- 
+- 
+- 
+
 
 ## Modelagem
 SEMMA

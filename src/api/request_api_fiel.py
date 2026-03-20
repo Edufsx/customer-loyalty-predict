@@ -27,7 +27,7 @@ resp.json()
 # --- Predição para vários clientes ----
 
 # Seleciona dados de vários clientes
-data = pd.read_sql("SELECT * FROM fs_all LIMIT 10", con)
+data = pd.read_sql("SELECT * FROM fs_all LIMIT 30", con)
 
 # Converte DataFrame no formato esperado pela API (json)
 data = {"data": json.loads(data.to_json(orient='records'))}

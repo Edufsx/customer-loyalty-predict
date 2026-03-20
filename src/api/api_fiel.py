@@ -7,13 +7,13 @@ import pandas as pd
 mlflow.set_tracking_uri("http://localhost:5000")
 
 # Busca versões registradas do modelo em produção
-versions = mlflow.search_model_versions(filter_string="name='model_fit'")
+versions = mlflow.search_model_versions(filter_string="name='model_fiel'")
 
 # Identifica a versão mais recente disponível
 last_version = max([int(i.version) for i in versions])
 
 # Carrega última versão registrada do modelo
-model = mlflow.sklearn.load_model(f"models:///model_fit/{last_version}")
+model = mlflow.sklearn.load_model(f"models:///model_fiel/{last_version}")
 #%%
 # Inicializa a aplicação Web
 app = Flask(__name__)

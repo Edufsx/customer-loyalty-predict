@@ -2,8 +2,8 @@
 import pandas as pd 
 import sqlalchemy
 import matplotlib.pyplot as plt
-from sklearn import cluster, preprocessing
 import seaborn as sns
+from sklearn import cluster, preprocessing
 
 # Função auxiliar para carregar consultas a partir arquivos
 def import_query(path):
@@ -23,10 +23,11 @@ df = pd.read_sql(query.format(date='2025-09-01'), engine)
 
 # Visualização inicial da relação entre frequência e valor
 plt.plot(df["qtdeFrequencia"], df["qtdePontosPos"], 'o')
-plt.xlabel("frequencia")
-plt.ylabel("valor")
+plt.xlabel("Frequência")
+plt.ylabel("Valor")
+plt.title("Frequência (Dias Ativos D28) x Valor (Pontos Positivos D28)")
 plt.grid(True)
-plt.show()
+plt.savefig("../../img/freq_value_scatter.png")
 
 # %%
 # Remoção do Outlier para evitar distorção do agrupamento
@@ -55,8 +56,11 @@ sns.scatterplot(data=df,
                 y="qtdePontosPos",
                 hue="cluster_calc",
                 palette="deep")
+plt.xlabel("Frequência")
+plt.ylabel("Valor")
+plt.title("Frequência D28 x Valor D28 - Agrupado")
 plt.grid()
-plt.show()
+plt.savefig("../../img/cluster_freq_value_scatter.png")
 # %%
 # Visualização dos corte manuais para construção dos segmentos
 sns.scatterplot(data=df, 
