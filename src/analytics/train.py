@@ -37,7 +37,7 @@ df.head()
 #%%
 # --- SAMPLE: Out Of Time (OOT) ---
 
-# Separa amostra mais recente para validação temporal (OOT)
+# Separa amostra para validação temporal (OOT)
 df_oot = df[df["dtRef"] >= "2025-10-01"].reset_index(drop=True)
 
 #%%
@@ -95,10 +95,10 @@ df_train[num_features] = df_train[num_features].astype(float)
 # Mediana das features numéricas por classe do target
 bivariada = df_train.groupby(target)[num_features].median().T
 
-# Razão entre medianas = fiéis (classe 1) / não fiéis (classe 0)
+# Razão entre medianas (poder discriminativo)
 bivariada['ratio'] = (bivariada[1] + 0.001) / (bivariada[0] + 0.001)
 
-# Ordenada as features por poder de discriminação (razão entre medianas)
+# Ordenada as features por poder de discriminação
 bivariada = bivariada.sort_values(by='ratio', ascending = False)
 bivariada
 
@@ -203,157 +203,162 @@ grid_options = {
     },
 }
 
-# Seleciona modelo e respectiva busca de Hiperparâmetros 
-model_name = "adaboost"
-model = models[model_name]
-params = grid_options[model_name]
+# Nomes dos modelos candidatos
+model_names = ["decision_tree","random_forest","adaboost"]
 
-# Busca de Hiperparâmetros com validação cruzada
-grid = model_selection.GridSearchCV(
-    model,
-    param_grid=params,
-    cv=3,
-    scoring="roc_auc", # Métrica de avaliação dos modelos
-    refit=True, # Treina o modelo  com melhores parâmetros no final
-    verbose=3,
-    n_jobs=-1
-)
+#%%
+# Loop para teste dos três modelos
+for model_name in model_names:
 
-# %%
-# --- MODEL and ASSES: Training Pipeline and Evaluation ---
+    # Seleciona modelo e respectiva busca de Hiperparâmetros
+    model = models[model_name]
+    params = grid_options[model_name]
 
-# Executa experimento no MLflow
-with mlflow.start_run() as r:
-
-    # Ativa logging automático (parâmetros, métricas e modelo)
-    mlflow.sklearn.autolog()
-    
-    # Pipeline de transformações + Modelo
-    model_pipeline = pipeline.Pipeline(steps=[
-        ('Remocao de Features', drop_features),
-        ('Imputacao de Zeros', imput_0),
-        ('Imputacao de um', imput_1),
-        ('Imputacao categorica', imput_cat),
-        ('Imputacao de 1000', imput_1000),
-        ('OneHot Encoding', onehot),
-        ('Algoritmo', grid),
-    ])
-
-    # --- MODEL ---
-    # Treinamento do Pipeline
-    model_pipeline.fit(X_train, y_train)
-
-    # --- ASSESS: Train ---
-
-    # Predições na base de Treino
-    y_pred_train = model_pipeline.predict(X_train)
-    y_proba_train = model_pipeline.predict_proba(X_train)
-
-    # Métricas de Treino 
-    acc_train = metrics.accuracy_score(y_train, y_pred_train)
-    auc_train = metrics.roc_auc_score(y_train, y_proba_train[:,1])
-    print("Acurácia Treino:", acc_train)
-    print("AUC Treino:", auc_train)
-
-    # --- ASSESS: Test ---
-    # Predições na base de Teste
-    y_pred_test = model_pipeline.predict(X_test)
-    y_proba_test = model_pipeline.predict_proba(X_test)
-
-    # Métricas de Teste
-    acc_test = metrics.accuracy_score(y_test, y_pred_test)
-    auc_test = metrics.roc_auc_score(y_test, y_proba_test[:,1])
-
-    print("Acurácia Teste:", acc_test)
-    print("AUC Teste:", auc_test)
-
-    # --- BASELINE (predição constante) ---
-
-    # Predição constante (todos como 0)
-    y_pred_chute = pd.Series([0]*y_test.shape[0])
-
-    # Probabilidade constante (média do target)
-    y_proba_chute = pd.Series([y_train.mean()]*y_test.shape[0])
-
-    # Métricas Baseline
-    acc_chute = metrics.accuracy_score(y_test, y_pred_chute)
-    auc_chute = metrics.roc_auc_score(y_test, y_proba_chute)
-
-    print("Acurácia chute:", acc_chute)
-    print("AUC chute:", auc_chute)
-
-    # --- ASSESS: Out of Time (OOT)
-    
-    # Base OOT (dados futuros)
-    X_oot = df_oot[features]
-    y_oot = df_oot[target]
-
-    # Predições na base OOT
-    y_pred_oot = model_pipeline.predict(X_oot)
-    y_proba_oot = model_pipeline.predict_proba(X_oot)
-
-    # Métricas OOT 
-    acc_oot = metrics.accuracy_score(y_oot, y_pred_oot)
-    auc_oot = metrics.roc_auc_score(y_oot, y_proba_oot[:,1])
-
-    print("Acurácia OOT:", acc_oot)
-    print("AUC OOT:", auc_oot)
-
-    # Log manual de métricas no MLflow 
-    mlflow.log_metrics({
-        "acc_train" : acc_train,
-        "auc_train" : auc_train,
-        "acc_test" : acc_test,
-        "auc_test" : auc_test,
-        "acc_oot" : acc_oot,
-        "auc_oot" : auc_oot,
-    })
-    
-    # --- ROC CURVE ---
-
-    # Calcula curvas ROC nas bases de treino, teste e OOT
-    roc_train = metrics.roc_curve(y_train, y_proba_train[:,1])
-    roc_test = metrics.roc_curve(y_test, y_proba_test[:,1])
-    roc_oot = metrics.roc_curve(y_oot, y_proba_oot[:,1])
-
-    # Plot das curvas
-    plt.figure(dpi=100)
-
-    plt.plot(roc_train[0], roc_train[1])
-    plt.plot(roc_test[0], roc_test[1])
-    plt.plot(roc_oot[0], roc_oot[1])
-
-    plt.legend([
-        f"Treino: {auc_train:.4f}",
-        f"Teste: {auc_test:.4f}",
-        f"OOT: {auc_oot:.4f}"]
+    # Busca de Hiperparâmetros com validação cruzada
+    grid = model_selection.GridSearchCV(
+        model,
+        param_grid=params,
+        cv=3,
+        scoring="roc_auc", # Métrica de avaliação dos modelos
+        refit=True, # Treina o modelo  com melhores parâmetros no final
+        verbose=3,
+        n_jobs=-1
     )
-    
-    # Linha base 
-    plt.plot([0,1], [0,1], '--', color='black')
 
-    plt.grid(True)
-    plt.title("Curva ROC")
-    plt.savefig("curva_roc.png")
-    
-    # Save e registra como artefato no MLflow  
-    mlflow.log_artifact('curva_roc.png')
-# %%
-# --- FEATURE IMPORTANCE ---
+    # --- MODEL and ASSES: Training Pipeline and Evaluation ---
 
-# Recupera melhor modelo após GridSearch
-best_model = model_pipeline.named_steps['Algoritmo'].best_estimator_
+    # Executa experimento no MLflow
+    with mlflow.start_run() as r:
 
-# Aplica transformações do pipeline sem o modelo
-X_transformed = model_pipeline[:-1].transform(X_train)
+        # Ativa logging automático (parâmetros, métricas e modelo)
+        mlflow.sklearn.autolog()
+        
+        # Pipeline de transformações + Modelo
+        model_pipeline = pipeline.Pipeline(steps=[
+            ('Remocao de Features', drop_features),
+            ('Imputacao de Zeros', imput_0),
+            ('Imputacao de um', imput_1),
+            ('Imputacao categorica', imput_cat),
+            ('Imputacao de 1000', imput_1000),
+            ('OneHot Encoding', onehot),
+            ('Algoritmo', grid),
+        ])
 
-# Nome das features após encoding
-features_names = X_transformed.columns.tolist()
+        # --- MODEL ---
+        # Treinamento do Pipeline
+        model_pipeline.fit(X_train, y_train)
 
-# Calcula importância das features
-feature_importance = pd.Series(
-    best_model.feature_importances_, 
-    index=features_names
-).sort_values(ascending=False)
+        # --- ASSESS: Train ---
 
-feature_importance
+        # Predições na base de Treino
+        y_pred_train = model_pipeline.predict(X_train)
+        y_proba_train = model_pipeline.predict_proba(X_train)
+
+        # Métricas de Treino 
+        acc_train = metrics.accuracy_score(y_train, y_pred_train)
+        auc_train = metrics.roc_auc_score(y_train, y_proba_train[:,1])
+        print("Acurácia Treino:", acc_train)
+        print("AUC Treino:", auc_train)
+
+        # --- ASSESS: Test ---
+        # Predições na base de Teste
+        y_pred_test = model_pipeline.predict(X_test)
+        y_proba_test = model_pipeline.predict_proba(X_test)
+
+        # Métricas de Teste
+        acc_test = metrics.accuracy_score(y_test, y_pred_test)
+        auc_test = metrics.roc_auc_score(y_test, y_proba_test[:,1])
+
+        print("Acurácia Teste:", acc_test)
+        print("AUC Teste:", auc_test)
+
+        # --- BASELINE (predição constante) ---
+
+        # Predição constante (todos como 0)
+        y_pred_chute = pd.Series([0]*y_test.shape[0])
+
+        # Probabilidade constante (média do target)
+        y_proba_chute = pd.Series([y_train.mean()]*y_test.shape[0])
+
+        # Métricas Baseline
+        acc_chute = metrics.accuracy_score(y_test, y_pred_chute)
+        auc_chute = metrics.roc_auc_score(y_test, y_proba_chute)
+
+        print("Acurácia chute:", acc_chute)
+        print("AUC chute:", auc_chute)
+
+        # --- ASSESS: Out of Time (OOT)
+        
+        # Base OOT (dados futuros)
+        X_oot = df_oot[features]
+        y_oot = df_oot[target]
+
+        # Predições na base OOT
+        y_pred_oot = model_pipeline.predict(X_oot)
+        y_proba_oot = model_pipeline.predict_proba(X_oot)
+
+        # Métricas OOT 
+        acc_oot = metrics.accuracy_score(y_oot, y_pred_oot)
+        auc_oot = metrics.roc_auc_score(y_oot, y_proba_oot[:,1])
+
+        print("Acurácia OOT:", acc_oot)
+        print("AUC OOT:", auc_oot)
+
+        # Log manual de métricas no MLflow 
+        mlflow.log_metrics({
+            "acc_train" : acc_train,
+            "auc_train" : auc_train,
+            "acc_test" : acc_test,
+            "auc_test" : auc_test,
+            "acc_oot" : acc_oot,
+            "auc_oot" : auc_oot,
+        })
+        
+        # --- ROC CURVE ---
+
+        # Calcula curvas ROC nas bases de treino, teste e OOT
+        roc_train = metrics.roc_curve(y_train, y_proba_train[:,1])
+        roc_test = metrics.roc_curve(y_test, y_proba_test[:,1])
+        roc_oot = metrics.roc_curve(y_oot, y_proba_oot[:,1])
+
+        # Plot das curvas
+        plt.figure(dpi=100)
+
+        plt.plot(roc_train[0], roc_train[1])
+        plt.plot(roc_test[0], roc_test[1])
+        plt.plot(roc_oot[0], roc_oot[1])
+
+        plt.legend([
+            f"Treino: {auc_train:.4f}",
+            f"Teste: {auc_test:.4f}",
+            f"OOT: {auc_oot:.4f}"]
+        )
+        
+        # Linha base 
+        plt.plot([0,1], [0,1], '--', color='black')
+
+        plt.grid(True)
+        plt.title("Curva ROC")
+        plt.savefig("curva_roc.png")
+        
+        # Save e registra como artefato no MLflow  
+        mlflow.log_artifact('curva_roc.png')
+        
+    # --- FEATURE IMPORTANCE ---
+
+    # Recupera melhor modelo após GridSearch
+    best_model = model_pipeline.named_steps['Algoritmo'].best_estimator_
+
+    # Aplica transformações do pipeline sem o modelo
+    X_transformed = model_pipeline[:-1].transform(X_train)
+
+    # Nome das features após encoding
+    features_names = X_transformed.columns.tolist()
+
+    # Calcula importância das features
+    feature_importance = pd.Series(
+        best_model.feature_importances_, 
+        index=features_names
+    ).sort_values(ascending=False)
+
+    print(feature_importance)

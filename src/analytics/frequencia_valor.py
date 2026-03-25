@@ -38,7 +38,7 @@ minmax = preprocessing.MinMaxScaler(feature_range=(0,1))
 X = minmax.fit_transform(df[["qtdeFrequencia", "qtdePontosPos"]])
 
 # Aplicação do algoritmo KMeans para segmentação de clientes
-kmean = cluster.KMeans(n_clusters=5, 
+kmean = cluster.KMeans(n_clusters=5,
                        random_state=42, 
                        max_iter=1000)
 kmean.fit(X)

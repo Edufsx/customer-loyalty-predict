@@ -306,7 +306,7 @@ tb_lag_dia AS (
            dtDia,
            -- Cria uma coluna com o dia anterior em que o usuário esteve ativo
            LAG(dtDia) OVER (PARTITION BY idCliente ORDER BY dtDia) AS lagDia
-    
+
     FROM tb_horas_dia
 ),
 

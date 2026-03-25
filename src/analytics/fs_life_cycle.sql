@@ -37,14 +37,14 @@ tb_share_ciclos AS (
                         ELSE 0 
                     END
                 ) / COUNT(*) AS pctCurioso,
-          
+
            1. * SUM(
                     CASE
                         WHEN descLifeCycle = '02-FIEL' THEN 1 
                         ELSE 0 
                     END
                 ) / COUNT(*) AS pctFiel,
-          
+
            1. * SUM(
                     CASE
                         WHEN descLifeCycle = '03-TURISTA' THEN 1 
