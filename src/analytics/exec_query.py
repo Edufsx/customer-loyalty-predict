@@ -104,7 +104,7 @@ def exec_query(
                 except Exception as err:
                     print(err)
             
-            # Salva as informações no banco de destino 
+            # Persiste os resultados no banco analítico 
             df.to_sql(
                 table, 
                 con, 

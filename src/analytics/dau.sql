@@ -13,4 +13,4 @@ FROM transacoes
 GROUP BY dtDia
 
 -- Ordena pela data na ordem ascendente
-ORDER BY dtDia  
+ORDER BY dtDia

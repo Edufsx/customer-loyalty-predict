@@ -1,13 +1,48 @@
+<!-- omit in toc -->
 # Loyalty Predict Project
 
 Projeto de Ciência de Dados realizado por Eduardo Ferreira da Silva. 
 
-## Visão Geral do Projeto
-Bem vindo ao meu projeto de predição de fidelidade de clientes utilizando dados do canal Teo Me Why da Twitch. Nele o **objetivo** foi construir uma **Tabela Base Analítica** (ABT) e um **modelo** de **aprendizado de máquina** (*machine learning*) para realizar **predições** sobre a **probabilidade** de um **cliente** se tornar **fiel** nos 28 dias seguintes a uma data específica.
+<!-- omit in toc -->
+## 📚 Sumário
+- [📌 Visão Geral do Projeto](#-visão-geral-do-projeto)
+- [🤔 Definição do problema](#-definição-do-problema)
+- [🧰 Ferramentas Utilizadas](#-ferramentas-utilizadas)
+- [💼 Entendimento do Negócio](#-entendimento-do-negócio)
+- [📊 Entendimento dos Dados](#-entendimento-dos-dados)
+  - [Análise de Engajamento](#análise-de-engajamento)
+  - [Principais Insights](#principais-insights)
+- [🛠️ Preparação dos Dados](#️-preparação-dos-dados)
+  - [Metodologia RFV e Ciclo de Vida](#metodologia-rfv-e-ciclo-de-vida)
+  - [Segmentação de Clientes](#segmentação-de-clientes)
+  - [Feature Stores](#feature-stores)
+    - [🔄 Ciclo de Vida](#-ciclo-de-vida)
+    - [💳 Transacional](#-transacional)
+    - [🎓 Plataforma de Cursos](#-plataforma-de-cursos)
+  - [Pipeline de Dados](#pipeline-de-dados)
+  - [Construção da ABT](#construção-da-abt)
+- [👨🏻‍🔬 Modelagem](#-modelagem)
+  - [Sample](#sample)
+  - [Explore](#explore)
+  - [Modify](#modify)
+  - [Model](#model)
+  - [Assess](#assess)
+- [🩺 Avaliação](#-avaliação)
+  - [Impacto no Negócio](#impacto-no-negócio)
+  - [Limitações](#limitações)
+- [🚀 Deploy](#-deploy)
+- [🖥️ Como Utilizar](#️-como-utilizar)
+- [🔚 Conclusão](#-conclusão)
 
-Dessa forma, utilizando as características (*features*) construídas do cliente no dia 01/03/2026, por exemplo, é possível determinar a probabilidade dele se tornar fiel no dia 29/03/2026. Para construir e orquestrar essas predições foram utilizadas, principalmente, scripts **Python**, consultas em **SQL** e conhecimentos de **Estatística** e **Aprendizado de Máquina**.
 
-Para desenvolvimento do projeto foi utilizada a metodologia *Cross-Industry Standard Process for Data Mining* (CRISP-DM) que estabelece 6 etapas: 
+## 📌 Visão Geral do Projeto
+Bem vindo ao meu projeto de predição de fidelidade de clientes utilizando dados do canal Teo Me Why da Twitch. 
+
+Nele o **objetivo** foi construir uma **Tabela Base Analítica** (ABT) e um **modelo** de ***machine learning*** para realizar **predições** sobre a **probabilidade** de um **cliente** se tornar **fiel** nos 28 dias seguintes a uma data específica.
+
+Para construir e orquestrar essas predições foram utilizadas, principalmente, *scripts* **Python**, consultas em **SQL** e conhecimentos de **Estatística** e **Aprendizado de Máquina**.
+
+Para o desenvolvimento do projeto foi utilizada a metodologia *Cross-Industry Standard Process for Data Mining* (CRISP-DM) que estabelece 6 etapas: 
 1. Entendimento do Negócio;
 2. Entendimento dos dados;
 3. Preparação dos dados;
@@ -17,456 +52,428 @@ Para desenvolvimento do projeto foi utilizada a metodologia *Cross-Industry Stan
 
 Além disso, dentro da etapa de modelagem utilizou-se a metodologia *Sample-Explore-Modify-Model-Assess* (SEMMA) desenvolvida pela empresa SAS.
 
-## Questão
+## 🤔 Definição do problema
 
-A principal questão que pretende-se responder nesse projeto é:
+A principal questão a ser respondida neste projeto é:
 
-* ``Qual a probabilidade de um cliente se tornar fiel daqui a 28 dias?``
+> Qual a probabilidade de um cliente se tornar fiel nos próximos 28 dias?
 
-Observação: Um cliente é considerado fiel se realizou ao menos uma transação nos últimos 7 dias considerando uma data específica.
+**Definição de cliente fiel:** cliente que realizou ao menos uma transação nos últimos 7 dias, considerando uma data de referência.
 
-## Ferramentas Utilizadas
+## 🧰 Ferramentas Utilizadas
 
-Para construção da ABT e do modelo de predição de fidelidade foram utilizadas as seguintes ferramentas:
+Para construção da ABT e do modelo de predição de fidelidade, foram utilizadas as seguintes ferramentas:
 
-- **SQL**: entender e analisar os dados do negócio, construir as características dos cliente e criar a Tabela Base Analítica (ABT); 
+- **SQL**: análise dos dados e construção das *features* e da Tabela Base Analítica (ABT);
 
-- **Python**: Orquestrar a criação de tabelas com SQL, possibilitar o treinamento e teste de algoritmos de aprendizado de máquina, automatizar a obtenção de dados atualizados e criar uma *Application Programming Interface* (API) para realizar as predições de fidelidade. Também foram utilizadas, principalmente, as seguintes bibliotecas:  
-    - **Biblioteca Pandas**: manipular e preparar dados para a modelagem;
-    - **Biblioteca MLflow**: versionar e administrar modelos de aprendizado de máquina; 
-    - **Biblioteca SQLAlchemy**: realizar conexões com bancos de dados e realizar consultas;
-    - **Biblioteca Flask**: criar uma API para o modelo preditivo;
-    - **Biblioteca Requests**: realizar requisições na API criada para o modelo;
-    - **Biblioteca Matplotlib**: visualizar dados e estatísticas;
-    - **Biblioteca Seaborn**: visualizar gráficos de dispersão com categorias;
-    - **Biblioteca Feature_engine**: transformar as características dos clientes para o modelo, imputando valores faltantes, codificando variáveis categóricas e selecionando as características mais relevantes;
-    - **Biblioteca Scikit-learn**: modelar o problema com algoritmos de aprendizado de máquina. Alguns dos algoritmos utilizados no caso desse projeto foram:
-        - ***Decision Tree Classifier***: busca classificar os clientes em fieis e não fieis por meio de divisões sucessivas, chamados de nós, considerando características da ABT e gerar um *score* de probabilidade para cada uma das classificações;
-        - ***Random Forest Classifier***: utiliza um conjunto de *Decision Tree Classifier* com amostras diferentes e combinar suas predições para classificar os clientes em fiéis e não fiéis, gerando *scores* de probabilidade para cada um;
-        - ***Adaptive Boosting Classifier***: treina iterativamente modelos base, alterando o peso de cada observação e dando mais importância a aquelas que possuem um erro maior associado com o objetivo de classificar clientes em fieis e não fieis.
- 
-## Como Utilizar (Para Usuários)
+- **Python**: orquestração do pipeline de dados, treinamento dos modelos e disponibilização das previsões via API.
 
-Primeiro passo: 
-- get_data
+Principais bibliotecas utilizadas:
 
-Segundo passo: exec_query:
-- cd src/analytics/
-- python exec_query.py --table fs_education --db_origin education-platform
-- python exec_query.py --table life_cycle
-- python exec_query.py --table fs_life_cycle --db_origin analytics --start 2024-03-01
-- python exec_query.py --table fs_transacional
+- **Pandas**: manipulação e preparação dos dados;
+- **SQLAlchemy**: conexão e consulta aos bancos de dados;
+- **Scikit-learn**: modelagem e avaliação dos algoritmos;
+- **Feature-engine**: transformação e tratamento das *features*;
+- **MLflow**: rastreamento e versionamento dos experimentos;
+- **Flask**: construção da API para predição;
+- **Requests**: consumo da API;
+- **Matplotlib** e **Seaborn**: visualização de dados.
 
-Terceiro passo:
-- ctrl + shift + q em target.sql
-- train.py
+Foram utilizados modelos baseados em árvores para classificação:
+- **Decision Tree**;
+- **Random Forest**;
+- **AdaBoost**.
 
-Quarto passo:
-TODO DIA
-- get data
-- pipeline_analytics.py
+## 💼 Entendimento do Negócio
 
-Quinto passo:
-- predict_fiel ou api_fiel
-ou
-- cd src/api/
-- flask --app api_fiel run --port 5001
-- request_api_fiel
+O ecossistema Teo Me Why envolve um sistema de pontos baseado no engajamento dos usuários nas transmissões ao vivo na Twitch e na plataforma de cursos.
 
+Os usuários acumulam pontos por meio de interações como participação em lives, consumo de conteúdo e realização de cursos, podendo utilizá-los para adquirir benefícios dentro do ecossistema.
 
-## Entendimento do Negócio
+O engajamento dos usuários, no entanto, apresenta variações ao longo do tempo, o que torna relevante a identificação de clientes com maior propensão a se tornarem fiéis.
 
-O ecossistema Teo Me Why envolve um sistema de pontos que é movimentado por transações realizadas em troca de produtos virtuais e pelo engajamento nas transmissões ao vivo no canal [Teo Me Why](https://www.twitch.tv/teomewhy) na Twitch e na [plataforma de cursos](https://cursos.teomewhy.org/).
+Neste contexto, o objetivo do projeto é prever a probabilidade de um cliente se tornar fiel, permitindo apoiar estratégias de retenção e aumento de engajamento nas transmissões.
 
-É possível ganhar pontos:
- - Enviando comentários nas transmissões ao vivo;
- - Assistindo as transmissões ao vivo;
- - Assinando uma lista de presença;
- - Completando cursos. 
- 
- Com o saldo acumulado pode-se:
- - Comprar itens para um personagem virtual de RPG;
- - Comprar benefícios durante as lives; 
- - Trocar os pontos para obter outro tipo de moeda, utilizada em transações de itens físicos.  
+## 📊 Entendimento dos Dados
 
-As transmissões ao vivo na Twitch são realizadas de segunda à sexta na parte da manhã com o Teodoro Calvo realizando algum conteúdo relacionado a Tecnologia. Em alguns dias, são marcados cursos ou projetos de Ciência de Dados, sendo esse os dias mais movimentados.
+Os dados foram disponibilizados em formato relacional e analisados com SQL (SQLite), sendo organizados em duas fontes principais:
 
-Os vídeos das transmissões ficam salvos na Twitch para assinantes que apoiam o canal de lives. Além disso, os cursos e projetos são editados e postados no YouTube, compondo a plataforma de cursos, a qual é construída utilizando a biblioteca do Python Streamlit e permite que os usuários registrarem seu progresso.
- 
-Nesse projeto não são analisadas as transações financeiras do ecossistema Teo Me Why, pois o objetivo aqui está relacionado ao engajamento, o qual é inconstante durante o ano e necessita de ações a serem realizadas.
+- **Sistema de Pontos**: transações e interações dos usuários;  
+    - Link: [https://www.kaggle.com/datasets/teocalvo/teomewhy-loyalty-system](https://www.kaggle.com/datasets/teocalvo/teomewhy-loyalty-system).
+- **Plataforma de Cursos**: progresso e engajamento educacional;
+    - Link: [https://www.kaggle.com/datasets/teocalvo/teomewhy-education-platform](https://www.kaggle.com/datasets/teocalvo/teomewhy-education-platform).
 
-Uma dessas ações é a predição da probabilidade de clientes se tornarem fiéis para que, assim, seja possível tomar ações com o intuito de, por exemplo, aumentar o público que assiste e interage nas transmissões ao vivo semanalmente.
+### Análise de Engajamento
 
-## Entendimento dos Dados
+Para avaliar o comportamento dos usuários ao longo do tempo, foram utilizadas as métricas:
 
-Os dados foram disponibilizados em formato de banco de dados relacional pelo Teodoro Calvo e analisados utilizando SQL com SQLite.
+- **DAU (Daily Active Users)**;
+- **MAU (Monthly Active Users - janela de 28 dias)**.
 
-O projeto utiliza dois bancos de dados principais:
+O MAU foi priorizado por fornecer uma visão mais estável do engajamento.
 
-- Sistema de Fidelidade
-- Plataforma Educacional
-
-### Fontes de Dados
-
-O primeiro banco de dados e mais utilizado é composto por 4 tabelas relacionadas a clientes, produtos, transações do sistema de pontos do canal Teo Me Why na Twitch. 
-
-- **Sistema de Pontos**: [https://www.kaggle.com/datasets/teocalvo/teomewhy-loyalty-system](https://www.kaggle.com/datasets/teocalvo/teomewhy-loyalty-system)
-
-
-O segundo banco de dados é formado por 8 tabelas relacionadas à plataforma de cursos.
-
-- **Plataforma de Cursos**: [https://www.kaggle.com/datasets/teocalvo/teomewhy-education-platform](https://www.kaggle.com/datasets/teocalvo/teomewhy-education-platform)
-
-Observação: Vale ressaltar que somente 10% da base tem informações cadastradas no segundo banco de dados, assim, sendo menos consultado que o primeiro.
-
-### Análise do Engajamento dos Usuários
-
-A primeira análise realizada tinha o objetivo de identificar se estava acontecendo perda ou ganho de engajamento dos usuários nas transmissões ao vivo do Teo Me Why.
-
-#### Usuários Ativos Diariamente (DAU)
-
-Para isso foi utilizada a métrica de **Usuários Ativos Diariamente (DAU)**, considerando como um usuário ativo aquele que realizou ao menos uma transação no sistema de pontos em um determinado dia.
-
-Para calcular essa métrica, foi utilizada uma consulta em SQL ao banco de dados do sistema de pontos, utilizando :
-
-```SQL
--- DAU: Daily Active Users
-
--- Seleciona uma coluna que contém apenas a data 
-SELECT DATE(DtCriacao) as dtDia,
-
-       -- Conta clientes distintos em uma data (DAU) 
-       COUNT(DISTINCT idCliente) as DAU
-
--- Define a consulta na tabela transacoes 
-FROM transacoes
-
--- Agrupa pela data
-GROUP BY dtDia
-
--- Ordena pela data na ordem ascendente
-ORDER BY dtDia  
-```
-
-O gráfico da série temporal do DAU gerada por essa consulta é o seguinte:
-
-![DAU](img/dau.png)
-
-Entretanto, ao analisar esse gráfico não foi possível perceber uma tendência clara de crescimento ou de queda no engajamento. Isso ocorre porque as transmissões não são feitas de final de semana, o que gera variações de DAU entre dias com e sem atividades, introduzindo um nível alto de ruído na série temporal.
-
-#### Usuários Ativos Mensalmente (MAU)
-
-Por conta dos ruídos gerados no DAU, optou-se por utilizar a métrica de **Usuários Ativos Mensalmente (MAU)**, evitando os ruídos do final de semana. No MAU considerou-se um janela móvel de 28 dias, pois ela contém exatamente 4 vezes cada dia da semana, reduzindo distorções causadas pela sazonalidade semanal.
-
-Para calcular a métrica MAU, foi utilizada a seguinte consulta em SQL:
-
-```SQL
--- MAU: Monthly Active Users
-
--- Seleciona quais dias cada cliente esteve ativo
-WITH tb_daily_users AS (
-     
-    SELECT DISTINCT 
-        DATE(DtCriacao) AS dtDia,
-        idCliente
-    FROM transacoes
-
-),
-
--- Constrói tabela com todos os dias da base
-tb_reference_day AS (
-    
-    SELECT DISTINCT 
-        dtDia AS dtRef
-    FROM tb_daily_users
-
-),
-
--- Calcula Usuários Mensais Ativos (MAU)
-tb_mau AS (
-
-    SELECT t1.dtRef,
-           -- Usuários distintos ativos nos últimos 28 dias
-           COUNT(DISTINCT t2.idCliente) AS MAU,
-           -- Quantidade de dias observados nos últimos 28 dias
-           COUNT(DISTINCT t2.dtDia) AS qtdDias
-    FROM tb_reference_day AS t1
-
-    LEFT JOIN tb_daily_users AS t2
-        ON t2.dtDia <= t1.dtRef
-    AND (JULIANDAY(t1.dtRef) - JULIANDAY(t2.dtDia)) < 28
-
-    -- Agrupa pela data de referência
-    GROUP BY t1.dtRef
-
-)
-
-SELECT *
-FROM tb_mau
-ORDER BY dtRef
-```
-
-O gráfico da série temporal do MAU, construído com os dados obtidos nessa consulta, pode ser observado abaixo:
+📄 Consulta em SQL para construção do MAU: [src/analytics/mau.sql](src/analytics/mau.sql).
 
 ![MAU](img/mau.png)
 
-#### Interpretação Gráfico da métrica MAU
+📄 *Script* completo em Python para construção do gráfico: [src/analytics/dau_mau_graphs.py](src/analytics/dau_mau_graphs.py). 
 
-Ao analisar o gráfico da métrica MAU é possível observar que em alguns meses ocorrem picos no número de Usuários Ativos Mensalmente. Esses aumentos coincidem com períodos em que o canal Teo Me Why está promovendo cursos e projetos. 
+---
 
-Além disso, nota-se uma **tendência de queda** entre **março de 2024 e agosto de 2025**, indicando uma possível redução de engajamento dos usuários nesse período. Em seguida, observa-se um **aumento substancial** no **mês posterior** a essa janela, o que pode estar relacionado com o curso de SQL ministrado pelo Teodoro Calvo, estimulando maior engajamento dos usuários.
+### Principais Insights
 
-Na sequência, identifica-se uma **nova tendência de queda** entre **outubro de 2025 e janeiro de 2026**, sugerindo que que o aumento substancial anterior pode ter sido pontual e atribuído ao sucesso do curso.
+- Picos de engajamento ocorrem em períodos com cursos e projetos; 
+- Há uma **tendência de queda** entre mar/2024 e ago/2025;
+- O aumento posterior sugere impacto pontual de iniciativas específicas;  
+- Nova queda indica dificuldade de retenção no longo prazo.  
 
-Diante deste cenário, torna-se relevante tomar medidas para aumentar o engajamento do público e reverter a tendência de queda observada. 
+Diante desse cenário, torna-se relevante identificar usuários com maior propensão à fidelidade, permitindo ações direcionadas para aumentar o engajamento e recorrência.
 
-Nesse contexto, um modelo de aprendizado de máquina capaz de prever os usuários com maior probabilidade de se tornarem fiéis pode auxiliar na definição de ações de Marketing com o intuito de incentivar o engajamento e recorrência desse público.
+## 🛠️ Preparação dos Dados
 
-### Geração dos Gráficos para Análise
-Para gerar os gráficos das métricas DAU e MAU e obter os dados foram utilizadas as seguintes bibliotecas:
+Nesta etapa foi construída a **Tabela Base Analítica (ABT)**, consolidando diferentes fontes e representações do comportamento dos clientes.
+
+### Metodologia RFV e Ciclo de Vida
+
+Inicialmente, foram utilizadas as métricas **Recência, Frequência e Valor (RFV)** para caracterizar o comportamento dos usuários:
+
+- **Recência**: tempo desde a última ativação  
+- **Frequência**: volume de interações  
+- **Valor**: intensidade das transações  
+
+A partir dessas métricas, foi desenvolvido um **modelo de ciclo de vida**, classificando os clientes em estados como:
+
+- Curioso, Fiel, Turista, Desencantado e Zumbi  
+- Estados de transição: Reconquistado e Reborn  
+
+Essa abordagem permite capturar a **dinâmica temporal do engajamento** dos usuários.
+
+📄 Implementação completa: [src/analytics/life_cycle.sql](src/analytics/life_cycle.sql)
+
+---
+
+### Segmentação de Clientes
+
+Para aprofundar a análise dentro de cada estágio do ciclo de vida, foi aplicada uma segmentação baseada em **Frequência e Valor**.
+
+Utilizando **K-Means**, os clientes foram agrupados em perfis comportamentais, como:
+
+- Alta frequência vs alto valor  
+- Baixa frequência vs baixo valor  
+
+Essa segmentação complementa o ciclo de vida, permitindo uma visão mais granular do comportamento dos usuários.
+
+📄 Código: [src/analytics/frequencia_valor.py](src/analytics/frequencia_valor.py)
+
+---
+
+### Feature Stores
+
+Foram desenvolvidas três *feature stores*, cada uma capturando diferentes dimensões do comportamento:
+
+#### 🔄 Ciclo de Vida
+- Estado atual e histórico do cliente  
+- Distribuição temporal entre estágios  
+- Comparação com média do grupo  
+
+📄 Consulta: [src/analytics/fs_life_cycle.sql](src/analytics/fs_life_cycle.sql).
+
+#### 💳 Transacional
+- Atividade em múltiplas janelas (D7, D14, D28, D56)  
+- Volume, frequência e intensidade de transações  
+- Recorrência e padrões de comportamento  
+
+📄 Consulta: [src/analytics/fs_transacional.sql](src/analytics/fs_transacional.sql).
+
+#### 🎓 Plataforma de Cursos
+- Progresso em cursos  
+- Engajamento em cada curso  
+- Tempo desde última atividade  
+
+📄 Consulta: [src/analytics/fs_education.sql](src/analytics/fs_education.sql).
+
+Essa separação permite maior **escalabilidade** na construção da ABT.
+
+---
+
+### Pipeline de Dados
+
+Foi desenvolvido um pipeline em Python para orquestrar a construção das *feature stores*.
+
+O pipeline:
+- Executa consultas SQL parametrizadas por data  
+- Processa múltiplas tabelas de forma padronizada  
+- Persiste os resultados no banco analítico  
+
+Essa abordagem permite atualização contínua e reprodutível dos dados.
+
+📄 Script: [src/analytics/exec_query.py](src/analytics/exec_query.py)
+
+---
+
+### Construção da ABT
+
+A ABT foi construída a partir da junção das *feature stores*, considerando múltiplas datas de referência por cliente.
+
+Principais decisões:
+
+- Amostragem aleatória de datas por cliente  
+- Remoção de clientes inativos extremos (Zumbis)  
+- Criação da variável target:
+
+> Cliente será fiel após 28 dias?
+
+A variável target recebe:
+- **1**: cliente se torna fiel  
+- **0**: caso contrário  
+
+Essa estrutura permite capturar o problema como uma tarefa de **classificação supervisionada temporal**.
+
+📄 Consulta completa: [src/analytics/target.sql](src/analytics/target.sql)
+
+## 👨🏻‍🔬 Modelagem
+
+A etapa de modelagem foi estruturada com base na metodologia **SEMMA (Sample, Explore, Modify, Model, Assess)**, garantindo organização, reprodutibilidade e consistência entre treino e inferência.
+
+📄 O código completo está disponível em:  
+[src/analytics/train.py](src/analytics/train.py)
+
+---
+
+### Sample
+
+Os dados foram divididos em três conjuntos:
+
+- **Treino/Teste**: dados anteriores entre `2024-03-01` e `2025-10-01`
+- **Out-of-Time (OOT)**: dados de `2025-10-01`, `2025-11-01` e `2025-12-01`
+
+A base OOT foi utilizada para simular um cenário real de produção, avaliando a estabilidade temporal do modelo.
+
+A divisão treino/teste foi feita com estratificação da variável target:
+
+```python
+X_train, X_test, y_train, y_test = model_selection.train_test_split(
+    X, y,
+    test_size=0.2,
+    random_state=42,
+    stratify=y
+)
+```
+
+---
+
+### Explore
+
+Foi realizada uma análise bivariada para avaliar o poder discriminativo das variáveis:
+
+- **Numéricas**: comparação da mediana entre classes (fiéis vs não fiéis);
+- **Categóricas**: taxa média de fidelidade por categoria.
+
+Além disso, analisou-se uma análise das *features* com valores faltantes. 
+
+Com base nessas análises:
+
+- Variáveis com baixo poder discriminativo foram marcadas para remoção;
+- Foram identificadas estratégias adequadas de imputação para valores faltantes.
+
+### Modify
+
+As transformações aplicadas incluíram:
+
+- Conversão de variáveis numéricas para `float`;
+- Remoção de features sem poder discriminativo (razão entre as medianas das classes = 1);
+- Tratamento de valores faltantes:
+  - `0`: ausência de atividade;
+  - `1`: variáveis de razão (neutralidade);
+  - `"Missing"`: variáveis categóricas;
+  - `1000`: ausência de recorrência.
+- Aplicação de One-Hot Encoding em variáveis categóricas.
+
+---
+
+### Model
+
+Foram testados três algoritmos baseados em árvores:
+
+- **Decision Tree**;
+- **Random Forest**;
+- **AdaBoost**.
+
+O treinamento foi realizado com **Grid Search** + **Validação Cruzada**, utilizando **AUC-ROC** como métrica principal.
+
+Foi construído um pipeline unificando pré-processamento e modelo:
 
 ```Python
-import pandas as pd
-import sqlalchemy
-import matplotlib.pyplot as plt
-import seaborn as sns
+model_pipeline = pipeline.Pipeline(steps=[
+    ('drop_features', drop_features),
+    ('imputations', imputers),
+    ('encoding', onehot),
+    ('model', grid),
+])
 ```
 
-A principal função do script para gerar o gráfico foi a seguinte:
+Além disso, utilizou-se o MLflow para rastreamento de experimentos, permitindo versionamento de modelos e comparação de métricas.
 
-```Python
-# Gera um gráfico de série temporal da métrica de Usuários Ativos  
-def graph(
-        df: pd.DataFrame, 
-        x_date: str, 
-        y_metric:str, 
-        color: str, 
-        title: str
-):
-    
-    # Converte a coluna de data para datetime
-    df[x_date] = pd.to_datetime(df[x_date])
-    
-    # Define o tamanho da figura
-    plt.figure(figsize=(12,6))
-    
-    # Cria um gráfico de linha a partir do DataFrame
-    sns.lineplot(
-        data=df, 
-        x=x_date, 
-        y=y_metric, 
-        linewidth=2, 
-        color=color)
+---
 
-    # Configura rótulos e títulos do gráfico 
-    plt.xlabel("Data")
-    plt.ylabel("Usuários Ativos")
-    plt.title(title)
+### Assess
 
-    # Adiciona uma grade ao gráfico
-    plt.grid()
+Os modelos foram avaliados nas bases:
 
-    # Exibe o gráfico
-    plt.show()
-```
+- **Treino**: ajuste aos dados
+- **Teste**: generalização
+- **OOT**: desempenho em dados futuros
 
+O resultado obtido na comparação das bases utilizando a AUC-ROC foi o seguinte:
 
-O script completo em Python pode ser encontrado em: [src\analytics\dau_mau_graphs.py](src\analytics\dau_mau_graphs.py). 
+|     Modelo    | Treino | Teste  |  OOT   |
+|---------------|--------|--------|--------|
+| Decision Tree | 0.8648 | 0.8012 | 0.7846 |
+| Random Forest | 0.9302 | 0.8462 | 0.8179 |
+|    AdaBoost   | 0.8845 | 0.8531 | 0.8250 |
 
-## Preparação dos Dados
+Escolha do modelo:
+- **Random Forest** apresentou melhor desempenho em treino, porém com sinais de *overfitting*;
+- **AdaBoost** apresentou maior consistência entre treino, teste e OOT;
 
-Nessa etapa iniciou-se a construção da Tabela Base Analítica (ABT).
+> 👉 O modelo final selecionado foi o `AdaBoost`, por apresentar melhor capacidade de generalização e estabilidade temporal.
 
-### Metodologia RFV
+📄 O código completo da etapa de modelagem pode ser encontrado em: [src/analytics/train.py](src/analytics/train.py).
 
-As primeiras características dos usuários foram construídas utilizando a metodologia Recência, Frequência e Valor (RFV), que buscou segmentar os clientes com base nas métricas de:
+## 🩺 Avaliação
 
-- **Recência**: quantidade de dias desde a última transação (ou ativação) do usuário;
--  **Frequência**: quantidade total de transações (ou ativações) em um determinado período;
-- **Valor**: valor total das transações de um usuário.
+O modelo **AdaBoost** foi selecionado por apresentar o melhor desempenho na base Out-of-Time (OOT), com **AUC-ROC de 0.825**, além de maior consistência entre treino, teste e OOT quando comparado aos demais modelos.
 
-A metodologia RFV foi utilizada para segmentar os clientes e possibilitar a construção do ciclo de vida dos usuários. 
+Esse comportamento indica boa capacidade de generalização e maior robustez a variações temporais dos dados.
 
-#### Ciclo de Vida dos Usuários e Recência
+### Impacto no Negócio
 
-O ciclo de vida do usuário, a primeira coluna da ABT a ser criada, é uma forma de classificar o comportamento dos consumidores durante a sua jornada com uma marca.
+O modelo permite **ordenar clientes por probabilidade de fidelidade**, viabilizando:
 
-No contexto desse projeto, esse sistema de classificação foi desenvolvido considerando a métrica de Recência, a penúltima ativação e primeira ativação dos clientes. Assim, os estados do Ciclo de Vida de um usuário são:
-
-- **Curioso**: Primeira Ativação $\leq$ 7 dias;
-- **Fiel**: Última Ativação $\leq$ 7 dias e Penúltima Ativação $\leq$ 14 dias;
-- **Turista**: 8 dias $\leq$ Última Ativação $\leq$ 14 dias;
-- **Desencantado**: 15 dias $\leq$ Última Ativação $\leq$ 28 dias;
-- **Zumbi**: última Ativação > 28 dias.
-
-Além disso, foram desenvolvidas dois estados de transição entre as classificações anteriores:  
-
-- **Reconquistado**: cliente era Desencantado e voltou a ser Fiel; 
-- **Reborn**: cliente era Zumbi e voltou a ser Fiel.
-
-Na consulta, a função de classificação `ROW_NUMBER()` (uma *Window Function*) foi importante para enumerar as linhas de forma decrescente e obter a segunda data mais recente (penúltima transação):
-
-```SQL
--- Tabela auxiliar para calcular a quantidade de dias desde a penúltima transação
-tb_rn AS (
-  
-    SELECT *,
-           -- Enumera transações por cliente para permitir extração da penúltima linha 
-           ROW_NUMBER() OVER (PARTITION BY idCliente ORDER BY dtDia DESC) AS rnDia
-    FROM tb_daily
-
-),
-
--- Calcula a Recência desde a penúltima transação 
-tb_penultima_ativacao AS (
-
-    SELECT *,
-           CAST(JULIANDAY('{date}') - JULIANDAY(dtDia) AS INT) AS qtdeDiasPenultimaAtivacao
-    FROM tb_rn
-    
-    WHERE rnDia = 2
-
-),
-```
-Na classificação do ciclo de vida, foi utilizada a expressão condicional `CASE WHEN`:
-
-```SQL
--- Classifica clientes em estágios do ciclo de vida com base na 1ª transação e na Recência 
-tb_life_cycle AS (
-    
-    SELECT t1.*,
-           t2.qtdeDiasPenultimaAtivacao,
-           
-           -- Regras de classificação do ciclo de vida:
-           CASE
-               WHEN t1.qtdeDiasPrimTransacao <= 7 THEN 
-                        '01-CURIOSO'
-                
-               WHEN t1.qtdeDiasUltimaAtivacao <= 7 
-               AND t2.qtdeDiasPenultimaAtivacao - t1.qtdeDiasUltimaAtivacao <= 14 THEN 
-                        '02-FIEL'
-                
-               WHEN t1.qtdeDiasUltimaAtivacao BETWEEN 8 AND 14 THEN 
-                        '03-TURISTA'
-                
-               WHEN t1.qtdeDiasUltimaAtivacao BETWEEN 15 AND 28 THEN 
-                        '04-DESENCANTADO'
-                
-               WHEN t1.qtdeDiasUltimaAtivacao > 28 THEN 
-                        '05-ZUMBI' 
-                
-               WHEN t1.qtdeDiasUltimaAtivacao <= 7 
-               AND t2.qtdeDiasPenultimaAtivacao - t1.qtdeDiasUltimaAtivacao BETWEEN 15 AND 27 THEN 
-                        '02-RECONQUISTADO'
-                
-               WHEN t1.qtdeDiasUltimaAtivacao <= 7 
-               AND t2.qtdeDiasPenultimaAtivacao - t1.qtdeDiasUltimaAtivacao >= 28 THEN
-                        '02-REBORN'
-           END AS descLifeCycle
-    
-    FROM tb_idade AS t1
-
-    LEFT JOIN tb_penultima_ativacao AS t2
-        ON t1.idCliente = t2.idCliente
-
-),
-```
-
-O código completo pode ser encontrado em: [src/analytics/life_cycle.sql](src/analytics/life_cycle.sql).
-
-
-#### Frequência e Valor
-
-Com o intuito criar uma segmentação dentro de cada etapa do ciclo de vida, foi utilizada uma consulta SQL para criar uma tabela com as métricas de frequência e valor de cada usuário, considerando uma janela de 28 dias 
-
-Consulta SQL Completa: [src\analytics\frequencia_valor.sql](src\analytics\frequencia_valor.sql);
-
-Após a consulta, utilizou-se um script Python para análise, visualização e segmentação baseada nos dados. 
-
-Buscando uma visualização inicial, criou-se um gráfico de dispersão de Frequência por Valor após a importação dos dados:
-
-![Scatter Freq e Value Cluster](img\freq_value_scatter.png)
-
-Com o gráfico foi possível identificar um outlier com bem mais de 4 mil pontos positivos, o qual foi retirado dos dados para não prejudicar o agrupamento.
-
-Para realizar uma segmentação dentro de cada etapa do ciclo de vida, os dados foram inicialmente padronizados para uma escala entre 0 e 1. 
-
-Em seguida, foi aplicado o algoritmo K-Means, que realiza o agrupamento com base na proximidade dos dados em relação as médias de cada grupo.
-
-Com o resultado obtido, construiu-se o seguinte gráfico:
-
-![Scatter Freq e Value Cluster](img\cluster_freq_value_scatter.png)
-
-Script Python Completo: [src\analytics\frequencia_valor.py](src\analytics\frequencia_valor.py).
-
-Baseado no agrupamento realizado pelo algoritmo, definiu-se os seguintes segmentos:
- 
-- **22-Eficientes**: Frequência > 10 e Valor $\leq$ 1500;
-- **20-Potencial**: Frequência > 10 e Valor $\leq$ 750
-- **21-Esforçados**: Frequência > 10 e Valor 750 $\leq$ Valor $\leq$ 1500
-- **12-Hypers**: Frequência $\leq$ 10 e Valor $\geq$ 1500;
-- **10-Indecisos**: Frequência <= 10 e 750 $\leq$ Valor $\leq$ 1500
-- **01-Preguiçoso**: 5 $\leq$ Frequência $\leq$ 10 e Valor $\leq$ 750
-- **00-Lurker**: Frequência < 5 e Valor $\leq$ 750 
-  
-Na sequência, definiu-se essa segmentação na consulta do ciclo de vida:
-[src/analytics/life_cycle.sql](src/analytics/life_cycle.sql).
-
-### Feature Store Ciclo de Vida
-
-Pensando em quais as características dos usuários relacionadas ao ciclo de vida seriam mais relevantes para predição de fidelidade, criou-se a *feature store* do ciclo de vida. Nela, foram cridas as seguintes *features*:
-- 
-- 
-- 
-- 
-
-
-## Modelagem
-SEMMA
-
-## Avaliação 
-
-## Deploy
-
-## What I Learned
-aaaa
-
-## Insights
-
-## Challenges I Faced
-
-## Conclusion
-
-
-## Ações
-
-- Métricas gerais do TMW;
-- Definição do Ciclo de Vida dos usuários;
-- Análise de Agrupamento dos diferentes perfís de usuários;
-- Criar modelo de Machine Learning que detecte a perda ou ganho de engajamento;
+- Segmentação de usuários mais propensos a engajar
+- Priorização de campanhas e ações de retenção
 - Incentivo por meio de pontos para usuários mais engajados;
 
-## Etapas
+### Limitações
 
-- Entendimento do negócio;
-- Extração dos dados;
-- Entendimento dos dados;
-- Definição das variáveis;
-- Criação das Feature Stores;
-- Treinamento do modelo;
-- Registro do modelo no MLFlow;
-- Criação de App para Inferência em Tempo Real;
-- Integração com Ecossistema TMW;
+- O modelo depende de padrões históricos e pode sofrer declínio da capacidade preditiva ao longo do tempo;
+- Necessidade de retreinamento periódico para manter a performance;
+- Sensibilidade a mudanças no comportamento dos usuários ou no produto.
 
-## Informações Extras
+## 🚀 Deploy
 
-### Banco de Dados do Sistema de Fidelidade
+O modelo foi integrado a um pipeline de dados que permite a atualização contínua das *features* e a geração de previsões com base na data mais recente disponível.
 
-O esquema do banco de dados do sistema de fidelidade é o seguinte:
+A inferência é realizada a partir da tabela `fs_all`, que consolida todas as *features* dos clientes na data de referência mais recente.
 
-![Schema Loyalty Sytem](img\schema_loyalty_system.png)
+As previsões podem ser realizadas de duas formas:
 
-### Banco de Dados da Plataforma de Educação
-Já o esquema do banco de dados da plataforma de educação é o seguinte:
+- **Batch (via script)**: utilizando o script `predict_fiel.py`, recomendado para execuções periódicas;
+- **Online (via API)**: utilizando a API construída com Flask (`api_fiel.py`), permitindo previsões sob demanda.
 
-![Schema Education Platform](img\schema_education_platform.png)
+Para execução completa do pipeline e geração das previsões, consulte a seção [Como Utilizar](#como-utilizar).
+
+## 🖥️ Como Utilizar
+
+A execução do projeto segue um fluxo sequencial, desde a ingestão de dados até a geração de previsões.
+
+⚠️ Execute todos os comandos a partir da raiz do projeto
+
+1. Ingestão de Dados
+
+Primeiramente, é necessário configurar as credenciais da API do Kaggle.
+
+Crie um arquivo `.env` na raiz do projeto com as seguintes variáveis:
+
+```env
+KAGGLE_USERNAME=seu_usuario
+KAGGLE_KEY=sua_chave
+```
+
+Em seguida, execute o *script* responsável pela coleta e atualização dos dados brutos:
+
+```bash
+python src/analytics/get_data.py
+```
+
+2. Construção das Feature Stores
+
+Execute o pipeline de criação das feature stores:
+
+```bash
+python src/analytics/exec_query.py --table fs_education --db_origin education-platform
+python src/analytics/exec_query.py --table life_cycle
+python src/analytics/exec_query.py --table fs_life_cycle --db_origin analytics --start 2024-03-01
+python src/analytics/exec_query.py --table fs_transacional
+```
+
+3. Criação da ABT e Treinamento do Modelo
+
+Antes do treinamento, é necessário executar a consulta SQL responsável pela criação da Analytical Base Table (ABT).
+
+Essa consulta está disponível no arquivo em [src/analytics/target.sql](src/analytics/target.sql) e pode ser executada por meio de um cliente SQL ou via terminal. Exemplo com SQLite:
+
+```bash
+sqlite3 data/analytics/database.db < target.sql
+```
+
+Após a construção da ABT, abra uma conexão com servidor do `MLflow`:
+
+```bash
+mlflow server
+```
+
+Na sequência, execute o treinamento dos modelos:
+```bash
+python src/analytics/train.py
+```
+
+Após o treinamento, registre o melhor modelo no servidor do MLflow.
+
+4. Atualização diária do Pipeline
+
+Para atualização contínua dos dados, execute:
+
+```bash
+python src/engineering/get_data.py
+```
+
+Em seguida, para atualização das *features*, execute:
+
+```bash
+python src/analytics/pipeline_analytics.py
+```
+
+5. Geração das Previsões
+
+As previsões podem ser realizadas de duas formas:
+
+- Via *script*:
+
+```bash
+cd src/analytics/
+python predict_fiel.py 
+```
+
+-  Via API:
+
+Execute a aplicação web:
+```bash
+flask --app api_fiel run --port 5001
+```
+
+Em seguida, execute:
+```bash
+cd src/api/
+python request_api_fiel.py
+```
+
+## 🔚 Conclusão
+
+Este projeto apresentou uma solução de **predição de fidelidade de clientes**, estruturando desde a construção da **ABT** até a modelagem e disponibilização das previsões.
+
+A utilização de técnicas como **RFV**, **ciclo de vida** e *feature engineering* permitiu capturar o comportamento dos usuários ao longo do tempo.
+
+O modelo **AdaBoost** foi selecionado por sua melhor **generalização**, com bom desempenho em dados futuros (*Out-of-Time*).
+
+A solução final, integrada a um **pipeline de dados** e uma **API**, possibilita seu uso em cenários reais de **retenção e engajamento** de clientes.

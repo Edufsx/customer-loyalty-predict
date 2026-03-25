@@ -12,7 +12,7 @@ WITH tb_daily_users AS (
 
 -- Constrói tabela com todos os dias da base
 tb_reference_day AS (
-    
+
     SELECT DISTINCT 
         dtDia AS dtRef
     FROM tb_daily_users

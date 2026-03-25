@@ -6,7 +6,7 @@ import seaborn as sns
 
 # Executa uma consulta SQL e retorna o resultado como DataFrame 
 def load_metric(
-        path: str, 
+        path: str,
         engine: sqlalchemy.engine.base.Engine
 ) -> pd.DataFrame:
   

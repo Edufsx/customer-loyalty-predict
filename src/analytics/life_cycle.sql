@@ -138,7 +138,7 @@ tb_join AS (
            t2.qtdePontosPos,
            t2.cluster
     FROM tb_life_cycle AS t1
-    
+
     LEFT JOIN tb_cluster AS t2
         ON t1.idCliente = t2.idCliente
 )

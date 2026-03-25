@@ -32,7 +32,7 @@ tb_pct_cursos AS (
            t1.descSlugCurso,
            1. * t1.qtdeEps / t2.qtdeTotalEps AS pctCursoCompleto
     FROM tb_usuarios_eps AS t1
-    
+
     LEFT JOIN tb_cursos_total_eps AS t2
         ON t1.descSlugCurso = t2.descSlugCurso
 
