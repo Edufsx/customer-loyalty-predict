@@ -40,23 +40,23 @@ Bem vindo ao meu projeto de predição de fidelidade de clientes utilizando dado
 
 Nele o **objetivo** foi construir uma **Tabela Base Analítica** (ABT) e um **modelo** de ***machine learning*** para realizar **predições** sobre a **probabilidade** de um **cliente** se tornar **fiel** nos 28 dias seguintes a uma data específica.
 
-Para construir e orquestrar essas predições foram utilizadas, principalmente, *scripts* **Python**, consultas em **SQL** e conhecimentos de **Estatística** e **Aprendizado de Máquina**.
+Para construir e orquestrar essas predições, foram utilizados, principalmente, *scripts* **Python**, consultas em **SQL** e conhecimentos de **Estatística** e **Aprendizado de Máquina**.
 
 Para o desenvolvimento do projeto foi utilizada a metodologia *Cross-Industry Standard Process for Data Mining* (CRISP-DM) que estabelece 6 etapas: 
-1. Entendimento do Negócio;
-2. Entendimento dos dados;
-3. Preparação dos dados;
-4. Modelagem;  
-5. Validação;
-6. Implementação do projeto e acompanhamento.
+1. **Entendimento do Negócio**;
+2. **Entendimento dos Dados**;
+3. **Preparação dos Dados**;
+4. **Modelagem**;  
+5. **Validação**;
+6. **Implementação do projeto e acompanhamento**.
 
-Além disso, dentro da etapa de modelagem utilizou-se a metodologia *Sample-Explore-Modify-Model-Assess* (SEMMA) desenvolvida pela empresa SAS.
+Além disso, dentro da etapa de modelagem utilizou-se a metodologia ***Sample-Explore-Modify-Model-Assess*** (SEMMA) desenvolvida pela empresa SAS.
 
 ## 🤔 Definição do problema
 
 A principal questão a ser respondida neste projeto é:
 
-> Qual a probabilidade de um cliente se tornar fiel nos próximos 28 dias?
+`Qual a probabilidade de um cliente se tornar fiel nos próximos 28 dias?`
 
 **Definição de cliente fiel:** cliente que realizou ao menos uma transação nos últimos 7 dias, considerando uma data de referência.
 
@@ -100,7 +100,7 @@ Os dados foram disponibilizados em formato relacional e analisados com SQL (SQLi
 
 - **Sistema de Pontos**: transações e interações dos usuários;  
     - Link: [https://www.kaggle.com/datasets/teocalvo/teomewhy-loyalty-system](https://www.kaggle.com/datasets/teocalvo/teomewhy-loyalty-system).
-- **Plataforma de Cursos**: progresso e engajamento educacional;
+- **Plataforma de Cursos**: progresso e engajamento nos cursos;
     - Link: [https://www.kaggle.com/datasets/teocalvo/teomewhy-education-platform](https://www.kaggle.com/datasets/teocalvo/teomewhy-education-platform).
 
 ### Análise de Engajamento
@@ -137,14 +137,14 @@ Nesta etapa foi construída a **Tabela Base Analítica (ABT)**, consolidando dif
 
 Inicialmente, foram utilizadas as métricas **Recência, Frequência e Valor (RFV)** para caracterizar o comportamento dos usuários:
 
-- **Recência**: tempo desde a última ativação  
-- **Frequência**: volume de interações  
-- **Valor**: intensidade das transações  
+- **Recência**: tempo desde a última ativação; 
+- **Frequência**: total de dias ativos (D28);  
+- **Valor**: total de pontos positivos nas transações (D28).  
 
 A partir dessas métricas, foi desenvolvido um **modelo de ciclo de vida**, classificando os clientes em estados como:
 
-- Curioso, Fiel, Turista, Desencantado e Zumbi  
-- Estados de transição: Reconquistado e Reborn  
+- Curioso, Fiel, Turista, Desencantado e Zumbi; 
+- Estados de transição: Reconquistado e Reborn. 
 
 Essa abordagem permite capturar a **dinâmica temporal do engajamento** dos usuários.
 
@@ -158,8 +158,8 @@ Para aprofundar a análise dentro de cada estágio do ciclo de vida, foi aplicad
 
 Utilizando **K-Means**, os clientes foram agrupados em perfis comportamentais, como:
 
-- Alta frequência vs alto valor  
-- Baixa frequência vs baixo valor  
+- Alta frequência vs alto valor;
+- Baixa frequência vs baixo valor.  
 
 Essa segmentação complementa o ciclo de vida, permitindo uma visão mais granular do comportamento dos usuários.
 
@@ -172,23 +172,23 @@ Essa segmentação complementa o ciclo de vida, permitindo uma visão mais granu
 Foram desenvolvidas três *feature stores*, cada uma capturando diferentes dimensões do comportamento:
 
 #### 🔄 Ciclo de Vida
-- Estado atual e histórico do cliente  
-- Distribuição temporal entre estágios  
-- Comparação com média do grupo  
+- Estado atual e histórico do cliente;  
+- Distribuição temporal entre estágios;  
+- Comparação com média do grupo.  
 
 📄 Consulta: [src/analytics/fs_life_cycle.sql](src/analytics/fs_life_cycle.sql).
 
 #### 💳 Transacional
-- Atividade em múltiplas janelas (D7, D14, D28, D56)  
-- Volume, frequência e intensidade de transações  
-- Recorrência e padrões de comportamento  
+- Atividade em múltiplas janelas (D7, D14, D28, D56);
+- Volume, frequência e intensidade de transações; 
+- Recorrência e padrões de comportamento.
 
 📄 Consulta: [src/analytics/fs_transacional.sql](src/analytics/fs_transacional.sql).
 
 #### 🎓 Plataforma de Cursos
-- Progresso em cursos  
-- Engajamento em cada curso  
-- Tempo desde última atividade  
+- Progresso em cursos;
+- Engajamento em cada curso;
+- Tempo desde última atividade.  
 
 📄 Consulta: [src/analytics/fs_education.sql](src/analytics/fs_education.sql).
 
@@ -201,9 +201,9 @@ Essa separação permite maior **escalabilidade** na construção da ABT.
 Foi desenvolvido um pipeline em Python para orquestrar a construção das *feature stores*.
 
 O pipeline:
-- Executa consultas SQL parametrizadas por data  
-- Processa múltiplas tabelas de forma padronizada  
-- Persiste os resultados no banco analítico  
+- Executa consultas SQL parametrizadas por data;
+- Processa múltiplas tabelas de forma padronizada;  
+- Persiste os resultados no banco analítico.
 
 Essa abordagem permite atualização contínua e reprodutível dos dados.
 
@@ -217,15 +217,15 @@ A ABT foi construída a partir da junção das *feature stores*, considerando m�
 
 Principais decisões:
 
-- Amostragem aleatória de datas por cliente  
-- Remoção de clientes inativos extremos (Zumbis)  
+- Amostragem aleatória de datas por cliente; 
+- Remoção de clientes inativos (Zumbis);  
 - Criação da variável target:
 
 > Cliente será fiel após 28 dias?
 
 A variável target recebe:
-- **1**: cliente se torna fiel  
-- **0**: caso contrário  
+- **1**: cliente se torna fiel;  
+- **0**: caso contrário.  
 
 Essa estrutura permite capturar o problema como uma tarefa de **classificação supervisionada temporal**.
 
@@ -244,8 +244,8 @@ A etapa de modelagem foi estruturada com base na metodologia **SEMMA (Sample, Ex
 
 Os dados foram divididos em três conjuntos:
 
-- **Treino/Teste**: dados anteriores entre `2024-03-01` e `2025-10-01`
-- **Out-of-Time (OOT)**: dados de `2025-10-01`, `2025-11-01` e `2025-12-01`
+- **Treino/Teste**: dados no período entre `2024-03-01` e `2025-10-01`;
+- **Out-of-Time (OOT)**: dados de `2025-10-01`, `2025-11-01` e `2025-12-01`;
 
 A base OOT foi utilizada para simular um cenário real de produção, avaliando a estabilidade temporal do modelo.
 
@@ -269,11 +269,11 @@ Foi realizada uma análise bivariada para avaliar o poder discriminativo das var
 - **Numéricas**: comparação da mediana entre classes (fiéis vs não fiéis);
 - **Categóricas**: taxa média de fidelidade por categoria.
 
-Além disso, analisou-se uma análise das *features* com valores faltantes. 
+Além disso, foram analisadas as features com valores faltantes.
 
 Com base nessas análises:
 
-- Variáveis com baixo poder discriminativo foram marcadas para remoção;
+- Variáveis sem poder discriminativo foram marcadas para remoção (razão entre as medianas das classes = 1);
 - Foram identificadas estratégias adequadas de imputação para valores faltantes.
 
 ### Modify
@@ -281,7 +281,7 @@ Com base nessas análises:
 As transformações aplicadas incluíram:
 
 - Conversão de variáveis numéricas para `float`;
-- Remoção de features sem poder discriminativo (razão entre as medianas das classes = 1);
+- Remoção de features sem poder discriminativo;
 - Tratamento de valores faltantes:
   - `0`: ausência de atividade;
   - `1`: variáveis de razão (neutralidade);
@@ -312,7 +312,7 @@ model_pipeline = pipeline.Pipeline(steps=[
 ])
 ```
 
-Além disso, utilizou-se o MLflow para rastreamento de experimentos, permitindo versionamento de modelos e comparação de métricas.
+Além disso, utilizou-se o `MLflow` para rastreamento de experimentos, permitindo versionamento de modelos e comparação de métricas.
 
 ---
 
@@ -320,9 +320,9 @@ Além disso, utilizou-se o MLflow para rastreamento de experimentos, permitindo 
 
 Os modelos foram avaliados nas bases:
 
-- **Treino**: ajuste aos dados
-- **Teste**: generalização
-- **OOT**: desempenho em dados futuros
+- **Treino**: ajuste aos dados;
+- **Teste**: generalização;
+- **OOT**: desempenho em dados futuros.
 
 O resultado obtido na comparação das bases utilizando a AUC-ROC foi o seguinte:
 
@@ -334,9 +334,9 @@ O resultado obtido na comparação das bases utilizando a AUC-ROC foi o seguinte
 
 Escolha do modelo:
 - **Random Forest** apresentou melhor desempenho em treino, porém com sinais de *overfitting*;
-- **AdaBoost** apresentou maior consistência entre treino, teste e OOT;
+- **AdaBoost** apresentou maior consistência entre treino, teste e OOT.
 
-> 👉 O modelo final selecionado foi o `AdaBoost`, por apresentar melhor capacidade de generalização e estabilidade temporal.
+👉 O modelo final selecionado foi o `AdaBoost`, por apresentar melhor capacidade de generalização e estabilidade temporal.
 
 📄 O código completo da etapa de modelagem pode ser encontrado em: [src/analytics/train.py](src/analytics/train.py).
 
@@ -350,9 +350,9 @@ Esse comportamento indica boa capacidade de generalização e maior robustez a v
 
 O modelo permite **ordenar clientes por probabilidade de fidelidade**, viabilizando:
 
-- Segmentação de usuários mais propensos a engajar
-- Priorização de campanhas e ações de retenção
-- Incentivo por meio de pontos para usuários mais engajados;
+- Segmentação de usuários mais propensos a engajar;
+- Priorização de campanhas e ações de retenção;
+- Incentivo por meio de pontos para usuários mais engajados.
 
 ### Limitações
 
@@ -369,7 +369,7 @@ A inferência é realizada a partir da tabela `fs_all`, que consolida todas as *
 As previsões podem ser realizadas de duas formas:
 
 - **Batch (via script)**: utilizando o script `predict_fiel.py`, recomendado para execuções periódicas;
-- **Online (via API)**: utilizando a API construída com Flask (`api_fiel.py`), permitindo previsões sob demanda.
+- **Online (via API)**: utilizando a API construída com Flask (`api_fiel.py`), permitindo a realização de previsões sob demanda.
 
 Para execução completa do pipeline e geração das previsões, consulte a seção [Como Utilizar](#como-utilizar).
 
@@ -377,7 +377,7 @@ Para execução completa do pipeline e geração das previsões, consulte a seç
 
 A execução do projeto segue um fluxo sequencial, desde a ingestão de dados até a geração de previsões.
 
-⚠️ Execute todos os comandos a partir da raiz do projeto
+> ⚠️ Execute todos os comandos a partir da raiz do projeto
 
 1. Ingestão de Dados
 
@@ -411,7 +411,7 @@ python src/analytics/exec_query.py --table fs_transacional
 
 Antes do treinamento, é necessário executar a consulta SQL responsável pela criação da Analytical Base Table (ABT).
 
-Essa consulta está disponível no arquivo em [src/analytics/target.sql](src/analytics/target.sql) e pode ser executada por meio de um cliente SQL ou via terminal. Exemplo com SQLite:
+Essa consulta está disponível em [src/analytics/target.sql](src/analytics/target.sql) e pode ser executada por meio do terminal. Exemplo com SQLite:
 
 ```bash
 sqlite3 data/analytics/database.db < target.sql
@@ -451,8 +451,7 @@ As previsões podem ser realizadas de duas formas:
 - Via *script*:
 
 ```bash
-cd src/analytics/
-python predict_fiel.py 
+python src/analytics/predict_fiel.py 
 ```
 
 -  Via API:
@@ -464,8 +463,7 @@ flask --app api_fiel run --port 5001
 
 Em seguida, execute:
 ```bash
-cd src/api/
-python request_api_fiel.py
+python src/api/request_api_fiel.py
 ```
 
 ## 🔚 Conclusão
