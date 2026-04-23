@@ -13,7 +13,7 @@ import mlflow
 
 # Conexão com o banco analítico
 con = sqlalchemy.create_engine(
-    "sqlite:///../../data/analytics/database.db"
+    "sqlite:///data/analytics/database.db"
 ) 
 
 #%%

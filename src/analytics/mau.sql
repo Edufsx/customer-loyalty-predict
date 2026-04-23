@@ -23,10 +23,13 @@ tb_reference_day AS (
 tb_mau AS (
 
     SELECT t1.dtRef,
+
            -- Usuários distintos ativos nos últimos 28 dias
            COUNT(DISTINCT t2.idCliente) AS MAU,
+    
            -- Quantidade de dias observados nos últimos 28 dias
            COUNT(DISTINCT t2.dtDia) AS qtdDias
+    
     FROM tb_reference_day AS t1
 
     LEFT JOIN tb_daily_users AS t2

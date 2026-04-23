@@ -4,18 +4,13 @@ SELECT idCliente,
         COUNT(DISTINCT DATE(DtCriacao)) AS qtdeFrequencia,
         
         -- Valor: quantidade de pontos positivos na janela
-        SUM(
-            CASE 
-                    WHEN qtdePontos > 0 THEN qtdePontos
-                    ELSE 0 
-            END
-            ) AS qtdePontosPos
+        SUM(CASE WHEN qtdePontos > 0 THEN qtdePontos ELSE 0 END) AS qtdePontosPos
 
     FROM transacoes
 
     -- Define janela móvel de 28 dias anterior a data de referência
     WHERE DtCriacao < '{date}'
-    AND DtCriacao >= date('{date}', '-28 day')
+    AND DtCriacao >= DATE('{date}', '-28 day')
 
     GROUP BY idCliente
 

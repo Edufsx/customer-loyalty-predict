@@ -276,6 +276,8 @@ Com base nessas análises:
 - Variáveis sem poder discriminativo foram marcadas para remoção (razão entre as medianas das classes = 1);
 - Foram identificadas estratégias adequadas de imputação para valores faltantes.
 
+---
+
 ### Modify
 
 As transformações aplicadas incluíram:
@@ -458,7 +460,7 @@ python src/analytics/predict_fiel.py
 
 Execute a aplicação web:
 ```bash
-flask --app api_fiel run --port 5001
+flask --app src.api.api_fiel run --port 5001
 ```
 
 Em seguida, execute:
