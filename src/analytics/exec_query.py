@@ -71,10 +71,10 @@ def exec_query(
 
     # Conexões com banco de origem e de destino   
     engine_app = sqlalchemy.create_engine(
-        f"sqlite:///../../data/{db_origin}/database.db"
+        f"sqlite:///data/{db_origin}/database.db"
     )
     engine_analytical = sqlalchemy.create_engine(
-        f"sqlite:///../../data/{db_target}/database.db"
+        f"sqlite:///data/{db_target}/database.db"
     )
     
     # Consulta base

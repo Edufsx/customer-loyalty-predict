@@ -31,54 +31,13 @@ tb_share_ciclos AS (
  
     SELECT idCliente,
     
-           1. * SUM(
-                    CASE
-                        WHEN descLifeCycle = '01-CURIOSO' THEN 1 
-                        ELSE 0 
-                    END
-                ) / COUNT(*) AS pctCurioso,
-
-           1. * SUM(
-                    CASE
-                        WHEN descLifeCycle = '02-FIEL' THEN 1 
-                        ELSE 0 
-                    END
-                ) / COUNT(*) AS pctFiel,
-
-           1. * SUM(
-                    CASE
-                        WHEN descLifeCycle = '03-TURISTA' THEN 1 
-                        ELSE 0 
-                    END
-                ) / COUNT(*) AS pctTurista,
-          
-           1. * SUM(
-                    CASE
-                        WHEN descLifeCycle = '04-DESENCANTADO' THEN 1 
-                        ELSE 0 
-                    END
-                ) / COUNT(*) AS pctDesencantado,
-                    
-           1. * SUM(
-                    CASE
-                        WHEN descLifeCycle = '05-ZUMBI' THEN 1 
-                        ELSE 0 
-                    END
-                ) / COUNT(*) AS pctZumbi,
-           
-           1. * SUM(
-                    CASE 
-                        WHEN descLifeCycle = '02-RECONQUISTADO' THEN 1 
-                        ELSE 0 
-                    END
-                ) / COUNT(*) AS pctReconquistado,
-           
-           1. * SUM(
-                    CASE 
-                        WHEN descLifeCycle = '02-REBORN' THEN 1 
-                        ELSE 0 
-                    END
-                ) / COUNT(*) AS pctReborn
+           1. * SUM(CASE WHEN descLifeCycle = '01-CURIOSO' THEN 1 ELSE 0 END) / COUNT(*) AS pctCurioso,
+           1. * SUM(CASE WHEN descLifeCycle = '02-FIEL' THEN 1 ELSE 0 END) / COUNT(*) AS pctFiel,
+           1. * SUM(CASE WHEN descLifeCycle = '03-TURISTA' THEN 1 ELSE 0 END) / COUNT(*) AS pctTurista,
+           1. * SUM(CASE WHEN descLifeCycle = '04-DESENCANTADO' THEN 1 ELSE 0 END) / COUNT(*) AS pctDesencantado,
+           1. * SUM(CASE WHEN descLifeCycle = '05-ZUMBI' THEN 1 ELSE 0 END) / COUNT(*) AS pctZumbi,
+           1. * SUM(CASE  WHEN descLifeCycle = '02-RECONQUISTADO' THEN 1 ELSE 0 END) / COUNT(*) AS pctReconquistado,
+           1. * SUM(CASE  WHEN descLifeCycle = '02-REBORN' THEN 1 ELSE 0 END) / COUNT(*) AS pctReborn
     
     FROM life_cycle
 
@@ -134,4 +93,3 @@ tb_join AS (
 SELECT DATE('{date}', '-1 day') AS dtRef,
        *
 FROM tb_join
-

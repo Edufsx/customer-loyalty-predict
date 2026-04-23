@@ -13,10 +13,7 @@ WITH tb_join AS (
            t2.descLifeCycle,
            
            -- Target: Cliente será fiel depois de 28 dias? Se sim, atribui 1
-           CASE 
-               WHEN t2.descLifeCycle = '02-FIEL' THEN 1 
-               ELSE 0
-           END AS flFiel,
+           CASE WHEN t2.descLifeCycle = '02-FIEL' THEN 1 ELSE 0 END AS flFiel,
            
            -- Ordena linhas aleatoriamente por cliente (amostragem aleatória das datas)
            ROW_NUMBER() OVER (PARTITION BY t1.idCliente ORDER BY RANDOM()) AS randomCol

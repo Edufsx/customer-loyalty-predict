@@ -4,7 +4,7 @@ from kaggle import api
 import shutil
 
 # Carrega credenciais de acesso do Kaggle a partir do arquivo .env
-dotenv.load_dotenv('../../.env')
+dotenv.load_dotenv('.env')
 
 # Lista de Datasets utilizados no projeto (fonte do Kaggle)
 datasets = [
@@ -21,7 +21,7 @@ for d in datasets:
     dataset_name = d.split("teomewhy-")[-1]
 
     # Define o caminho de destino 
-    path = f'../../data/{dataset_name}/database.db'
+    path = f'data/{dataset_name}/database.db'
 
     # Move o Dataset para o diretório do projeto
     shutil.move('database.db', path)

@@ -25,7 +25,7 @@ pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
 
 # Conexão com o banco de dados analítico
-con = sqlalchemy.create_engine("sqlite:///../../data/analytics/database.db")
+con = sqlalchemy.create_engine("sqlite:///data/analytics/database.db")
 
 # %%
 # --- Data Load ---

@@ -15,8 +15,8 @@ WITH tb_daily AS (
 tb_idade AS (
 
     SELECT idCliente,
-           CAST(JULIANDAY('{date}') - JULIANDAY(min(dtDia)) AS INT) AS qtdeDiasPrimTransacao,
-           CAST(JULIANDAY('{date}') - JULIANDAY(max(dtDia)) AS INT) AS qtdeDiasUltimaAtivacao
+           CAST(JULIANDAY('{date}') - JULIANDAY(MIN(dtDia)) AS INT) AS qtdeDiasPrimTransacao,
+           CAST(JULIANDAY('{date}') - JULIANDAY(MAX(dtDia)) AS INT) AS qtdeDiasUltimaAtivacao
     FROM tb_daily
     
     GROUP BY idCliente
@@ -51,29 +51,22 @@ tb_life_cycle AS (
            
            -- Regras de classificação do ciclo de vida:
            CASE
-               WHEN t1.qtdeDiasPrimTransacao <= 7 THEN 
-                        '01-CURIOSO'
+               WHEN t1.qtdeDiasPrimTransacao <= 7 THEN '01-CURIOSO'
                 
                WHEN t1.qtdeDiasUltimaAtivacao <= 7 
-               AND t2.qtdeDiasPenultimaAtivacao - t1.qtdeDiasUltimaAtivacao <= 14 THEN 
-                        '02-FIEL'
+               AND t2.qtdeDiasPenultimaAtivacao - t1.qtdeDiasUltimaAtivacao <= 14 THEN '02-FIEL'
                 
-               WHEN t1.qtdeDiasUltimaAtivacao BETWEEN 8 AND 14 THEN 
-                        '03-TURISTA'
+               WHEN t1.qtdeDiasUltimaAtivacao BETWEEN 8 AND 14 THEN '03-TURISTA'
                 
-               WHEN t1.qtdeDiasUltimaAtivacao BETWEEN 15 AND 28 THEN 
-                        '04-DESENCANTADO'
+               WHEN t1.qtdeDiasUltimaAtivacao BETWEEN 15 AND 28 THEN '04-DESENCANTADO'
                 
-               WHEN t1.qtdeDiasUltimaAtivacao > 28 THEN 
-                        '05-ZUMBI' 
+               WHEN t1.qtdeDiasUltimaAtivacao > 28 THEN '05-ZUMBI' 
                 
                WHEN t1.qtdeDiasUltimaAtivacao <= 7 
-               AND t2.qtdeDiasPenultimaAtivacao - t1.qtdeDiasUltimaAtivacao BETWEEN 15 AND 27 THEN 
-                        '02-RECONQUISTADO'
+               AND t2.qtdeDiasPenultimaAtivacao - t1.qtdeDiasUltimaAtivacao BETWEEN 15 AND 27 THEN '02-RECONQUISTADO'
                 
                WHEN t1.qtdeDiasUltimaAtivacao <= 7 
-               AND t2.qtdeDiasPenultimaAtivacao - t1.qtdeDiasUltimaAtivacao >= 28 THEN
-                        '02-REBORN'
+               AND t2.qtdeDiasPenultimaAtivacao - t1.qtdeDiasUltimaAtivacao >= 28 THEN '02-REBORN'
            END AS descLifeCycle
     
     FROM tb_idade AS t1
@@ -91,18 +84,13 @@ tb_freq_valor AS (
            COUNT(DISTINCT DATE(DtCriacao)) AS qtdeFrequencia,
         
            -- Valor: quantidade de pontos positivos na janela
-           SUM(
-               CASE 
-                    WHEN qtdePontos > 0 THEN qtdePontos
-                    ELSE 0 
-               END
-           ) AS qtdePontosPos
+           SUM(CASE WHEN qtdePontos > 0 THEN qtdePontos ELSE 0 END) AS qtdePontosPos
 
     FROM transacoes
 
     -- Define janela móvel de 28 dias anterior a data de referência
     WHERE DtCriacao < '{date}'
-    AND DtCriacao >= date('{date}', '-28 day')
+    AND DtCriacao >= DATE('{date}', '-28 day')
 
     GROUP BY idCliente
 
